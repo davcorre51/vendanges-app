@@ -5,192 +5,150 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#1a1a2e">
+<meta name="theme-color" content="#2d5a27">
 <title>Vendanges</title>
-<link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <style>
-:root {
-  --bg: #f5f3ee;
-  --bg2: #ece9e2;
-  --bg3: #e3dfd6;
-  --surface: #ffffff;
-  --border: rgba(0,0,0,0.08);
-  --border2: rgba(0,0,0,0.12);
-  --text: #1c1917;
-  --text2: #6b6560;
-  --text3: #9c9590;
-  --accent: #2d5a27;
-  --accent2: #4a8f42;
-  --accent-light: #eaf3e8;
-  --amber: #92400e;
-  --amber-light: #fef3c7;
-  --red: #991b1b;
-  --red-light: #fee2e2;
-  --blue: #1e3a5f;
-  --blue-light: #dbeafe;
-  --radius: 12px;
-  --radius-sm: 8px;
-  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
-  --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+:root{
+  --bg:#f5f3ee;--bg2:#ece9e2;--bg3:#e3dfd6;
+  --surface:#fff;--border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.12);
+  --text:#1c1917;--text2:#6b6560;--text3:#9c9590;
+  --accent:#2d5a27;--accent2:#4a8f42;--accent-light:#eaf3e8;
+  --amber:#92400e;--amber-light:#fef3c7;
+  --red:#991b1b;--red-light:#fee2e2;
+  --blue:#1e3a5f;--blue-light:#dbeafe;
+  --radius:12px;--radius-sm:8px;
+  --shadow:0 1px 3px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.06);
+  --shadow-md:0 4px 6px rgba(0,0,0,0.07),0 2px 4px rgba(0,0,0,0.06);
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--text);overscroll-behavior:none}
 .app{max-width:430px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:var(--bg)}
-
-/* TOPBAR */
 .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:var(--shadow)}
 .topbar-brand{display:flex;align-items:center;gap:8px}
 .topbar-icon{width:30px;height:30px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
-.topbar-title{font-size:15px;font-weight:600;color:var(--text);letter-spacing:-0.01em}
-.topbar-sub{font-size:11px;color:var(--text2);margin-top:0px;font-family:'DM Mono',monospace}
+.topbar-title{font-size:15px;font-weight:600;color:var(--text)}
+.topbar-sub{font-size:11px;color:var(--text2);font-family:'DM Mono',monospace}
 .annee-wrap{position:relative}
-.annee-sel{appearance:none;font-size:11px;font-weight:500;font-family:'DM Mono',monospace;padding:4px 20px 4px 8px;border-radius:20px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);cursor:pointer}
+.annee-sel{appearance:none;font-size:13px;font-weight:500;font-family:'DM Mono',monospace;padding:6px 24px 6px 10px;border-radius:20px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);cursor:pointer}
 .annee-sel:focus{outline:none;border-color:var(--accent);color:var(--accent)}
-.annee-chevron{position:absolute;right:6px;top:50%;transform:translateY(-50%);pointer-events:none;font-size:9px;color:var(--text3)}
-
-/* NAV */
+.annee-chevron{position:absolute;right:8px;top:50%;transform:translateY(-50%);pointer-events:none;font-size:10px;color:var(--text3)}
 .nav{display:flex;background:var(--surface);border-top:1px solid var(--border);position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;z-index:50;box-shadow:0 -1px 3px rgba(0,0,0,0.06)}
 .nav-btn{flex:1;padding:8px 2px 10px;border:none;background:none;font-size:10px;font-family:'DM Sans',sans-serif;color:var(--text3);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;transition:color 0.15s;font-weight:500}
-.nav-btn i{font-size:20px;transition:transform 0.15s}
+.nav-btn i{font-size:20px}
 .nav-btn.active{color:var(--accent)}
-.nav-btn.active i{transform:scale(1.1)}
-
-/* SCREENS */
 .screens{flex:1;overflow-y:auto;padding-bottom:70px}
 .screen{display:none;padding:12px}
 .screen.active{display:block}
-
-/* CARDS */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px;box-shadow:var(--shadow)}
 .card-title{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;font-family:'DM Mono',monospace}
-
-/* EXPLOIT TABS */
-.etabs{display:flex;gap:6px;margin-bottom:10px}
+.etabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
 .etab{padding:5px 13px;border-radius:20px;border:1px solid var(--border2);background:var(--surface);font-size:12px;font-weight:500;cursor:pointer;color:var(--text2);transition:all 0.15s}
 .etab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-
-/* STATS */
 .stat-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:10px}
 .stat{background:var(--bg2);border-radius:var(--radius-sm);padding:10px 12px;border:1px solid var(--border)}
 .stat-label{font-size:10px;color:var(--text3);margin-bottom:3px;font-family:'DM Mono',monospace;font-weight:500}
-.stat-val{font-size:22px;font-weight:600;color:var(--text);letter-spacing:-0.02em}
-.stat-val.green{color:var(--accent)}
-.stat-val.amber{color:var(--amber)}
-.stat-val.blue{color:var(--blue)}
-
-/* PROGRESS */
+.stat-val{font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.02em}
+.stat-val.green{color:var(--accent)}.stat-val.amber{color:var(--amber)}.stat-val.blue{color:var(--blue)}
+.stat-sub{font-size:10px;color:var(--text3);margin-top:2px;font-family:'DM Mono',monospace}
 .prog-wrap{margin-bottom:12px}
 .prog-label{display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:5px;font-weight:500}
-.prog-track{height:6px;background:var(--bg2);border-radius:3px;overflow:hidden}
-.prog-fill{height:100%;border-radius:3px;background:var(--accent);transition:width 0.4s}
-
-/* POIDS BADGE */
+.prog-track{height:7px;background:var(--bg2);border-radius:4px;overflow:hidden}
+.prog-fill{height:100%;border-radius:4px;background:var(--accent);transition:width 0.4s}
 .poids-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:4px 10px;border-radius:20px;margin-bottom:10px;font-weight:500;font-family:'DM Mono',monospace}
 .poids-badge.prev{background:var(--amber-light);color:var(--amber)}
 .poids-badge.reel{background:var(--accent-light);color:var(--accent)}
-
-/* TABLE */
 .tbl{width:100%;border-collapse:collapse;font-size:12px}
 .tbl th{font-size:10px;color:var(--text3);font-weight:600;text-align:right;padding:0 4px 8px;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;white-space:nowrap}
 .tbl th:first-child{text-align:left}
 .tbl td{padding:7px 4px;border-bottom:1px solid var(--border);color:var(--text);text-align:right;vertical-align:middle}
-.tbl td:first-child{text-align:left;font-weight:500;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tbl td:first-child{text-align:left;font-weight:500;max-width:105px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tbl tr:last-child td{border-bottom:none}
-.tbl tr.total-row td{font-weight:600;border-top:2px solid var(--border2);font-size:12px}
+.tbl tr.total-row td{font-weight:600;border-top:2px solid var(--border2)}
 .dp{color:var(--accent)}.dn{color:var(--red)}
-
-/* BADGES */
 .badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;font-family:'DM Mono',monospace}
 .badge.done{background:var(--accent-light);color:var(--accent)}
 .badge.prog{background:var(--blue-light);color:var(--blue)}
 .badge.todo{background:var(--bg2);color:var(--text3)}
-
-/* FORMS */
+.badge.actif{background:var(--accent-light);color:var(--accent)}
+.badge.termine{background:var(--bg2);color:var(--text3)}
 .form-group{margin-bottom:11px}
 .form-label{font-size:12px;color:var(--text2);margin-bottom:5px;display:block;font-weight:500}
-select,input[type=number],input[type=text],input[type=date],input[type=datetime-local]{
-  width:100%;padding:9px 11px;border:1px solid var(--border2);border-radius:var(--radius-sm);
-  font-size:14px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);
-  transition:border-color 0.15s}
+select,input[type=number],input[type=text],input[type=date],input[type=datetime-local]{width:100%;padding:9px 11px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);transition:border-color 0.15s}
 select:focus,input:focus{outline:none;border-color:var(--accent)}
 .hint{font-size:11px;color:var(--accent);margin-top:3px;font-family:'DM Mono',monospace}
-
-/* BUTTONS */
 .btn{width:100%;padding:11px;border:none;border-radius:var(--radius-sm);font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;margin-top:4px;transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:6px}
 .btn:active{transform:scale(0.98)}
 .btn-primary{background:var(--accent);color:#fff}
-.btn-primary:hover{background:var(--accent2)}
 .btn-secondary{background:var(--bg2);color:var(--text);border:1px solid var(--border2);margin-top:6px}
 .btn-success{background:#1D9E75;color:#fff;margin-top:6px}
 .btn-danger{background:var(--red-light);color:var(--red);border:1px solid rgba(153,27,27,0.2);margin-top:6px}
-
-/* HIST ITEMS */
 .hist-item{display:flex;align-items:flex-start;gap:8px;padding:10px 0;border-bottom:1px solid var(--border)}
 .hist-item:last-child{border-bottom:none}
 .hist-main{font-size:13px;font-weight:600;color:var(--text)}
 .hist-sub{font-size:11px;color:var(--text2);margin-top:2px;font-family:'DM Mono',monospace}
-.hist-val{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;text-align:right}
+.hist-val{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap}
 .hist-actions{display:flex;gap:4px;flex-shrink:0}
 .icon-btn{background:none;border:1px solid var(--border2);border-radius:var(--radius-sm);padding:5px 6px;cursor:pointer;color:var(--text2);display:flex;align-items:center;transition:all 0.15s}
 .icon-btn:hover{background:var(--bg2)}
 .icon-btn.danger:hover{color:var(--red);border-color:rgba(153,27,27,0.3)}
-
-/* ALERTS */
 .alert{font-size:12px;padding:8px 11px;border-radius:var(--radius-sm);margin-bottom:8px;font-weight:500}
 .alert.warn{background:var(--amber-light);color:var(--amber)}
 .alert.ok{background:var(--accent-light);color:var(--accent)}
 .alert.info{background:var(--blue-light);color:var(--blue)}
-
-/* TOTAL ROWS */
 .tot-row{display:flex;justify-content:space-between;font-size:13px;padding:3px 0}
 .tot-row .lbl{color:var(--text2)}
 .tot-row.bold{font-weight:600}
 .divider{height:1px;background:var(--border);margin:8px 0}
-
-/* CAMPAGNE ITEMS */
 .camp-item{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)}
 .camp-item:last-child{border-bottom:none}
-
-/* CHART BARS */
 .bar-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
 .bar-label{font-size:11px;color:var(--text2);width:105px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bar-track{flex:1;height:12px;background:var(--bg2);border-radius:3px;overflow:hidden}
 .bar-fill{height:100%;border-radius:3px;background:var(--accent);transition:width 0.5s}
-.bar-val{font-size:10px;color:var(--text2);width:60px;text-align:right;flex-shrink:0;font-family:'DM Mono',monospace}
-
-/* SIM */
-.sim-result{background:var(--bg2);border-radius:var(--radius-sm);padding:11px 13px;margin-top:8px;border:1px solid var(--border)}
-.sim-row{display:flex;justify-content:space-between;font-size:13px;padding:3px 0}
-.sim-row .lbl{color:var(--text2)}
-.sim-row.total{font-weight:600;border-top:1px solid var(--border2);margin-top:4px;padding-top:6px}
-
-/* EXPORT BTN */
+.bar-val{font-size:10px;color:var(--text2);width:65px;text-align:right;flex-shrink:0;font-family:'DM Mono',monospace}
 .export-row{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
 .export-btn{flex:1;min-width:120px;padding:8px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--bg2);font-size:12px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text);display:flex;align-items:center;justify-content:center;gap:5px;transition:all 0.15s}
 .export-btn:hover{background:var(--bg3);border-color:var(--accent)}
-
-/* LOADING */
 .loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;gap:12px;color:var(--text2);font-size:13px}
 .spinner{width:28px;height:28px;border:2px solid var(--bg3);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-
-/* TOAST */
 .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--accent);color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;font-weight:600;opacity:0;transition:all 0.25s;pointer-events:none;z-index:999;white-space:nowrap;box-shadow:var(--shadow-md)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-
-/* OFFLINE BANNER */
 .offline-banner{background:var(--amber);color:#fff;text-align:center;padding:6px;font-size:12px;font-weight:500;display:none}
 .offline-banner.show{display:block}
+/* MODAL CONFIRMATION */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.active{display:flex}
+.modal{background:var(--surface);border-radius:var(--radius);padding:20px;width:100%;max-width:340px;box-shadow:var(--shadow-md)}
+.modal-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:8px}
+.modal-body{font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.5}
+.modal-actions{display:flex;gap:8px}
+.modal-actions .btn{margin-top:0;flex:1}
+/* SOUS-ÉCRANS */
+.subscreen{display:none;position:fixed;inset:0;background:var(--bg);z-index:100;overflow-y:auto;max-width:430px;margin:0 auto}
+.subscreen.active{display:block}
+.subscreen-topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10;box-shadow:var(--shadow)}
+.back-btn{background:none;border:none;cursor:pointer;color:var(--accent);font-size:14px;display:flex;align-items:center;gap:4px;padding:0;font-weight:500;font-family:'DM Sans',sans-serif}
+.subscreen-title{font-size:15px;font-weight:600;color:var(--text)}
+.subscreen-sub{font-size:11px;color:var(--text2);font-family:'DM Mono',monospace}
+.subscreen-body{padding:12px;padding-bottom:30px}
+.parc-row{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border)}
+.parc-row:last-child{border-bottom:none}
+.parc-info{flex:1;min-width:0}
+.parc-nom{font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.parc-detail{font-size:11px;color:var(--text2);margin-top:2px;font-family:'DM Mono',monospace}
+.summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.sum-stat{background:var(--bg2);border-radius:var(--radius-sm);padding:9px 12px;border:1px solid var(--border)}
+.sum-label{font-size:10px;color:var(--text3);margin-bottom:2px;font-family:'DM Mono',monospace;font-weight:500}
+.sum-val{font-size:18px;font-weight:600;color:var(--text)}
 </style>
 </head>
 <body>
 <div class="app">
-  <div class="offline-banner" id="offline-banner">📵 Hors ligne — les données seront synchronisées à la reconnexion</div>
-
+  <div class="offline-banner" id="offline-banner">📵 Hors ligne — synchronisation à la reconnexion</div>
   <div class="topbar">
     <div class="topbar-brand">
       <div class="topbar-icon">🍇</div>
@@ -218,10 +176,8 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
         </div>
         <div class="card-title">Détail par parcelle</div>
         <div style="overflow-x:auto">
-          <table class="tbl">
-            <thead><tr><th>Parcelle</th><th>Sorties</th><th>Obj.</th><th>Écart</th><th>kg/ha</th><th>Statut</th></tr></thead>
-            <tbody id="parc-tbody"></tbody>
-          </table>
+          <table class="tbl"><thead><tr><th>Parcelle</th><th>Sorties</th><th>Obj.</th><th>Écart</th><th>kg/ha</th><th>Statut</th></tr></thead>
+          <tbody id="parc-tbody"></tbody></table>
         </div>
       </div>
     </div>
@@ -230,14 +186,10 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
     <div class="screen" id="screen-saisie">
       <div class="card" style="margin-top:4px" id="form-rem">
         <div class="card-title" id="form-rem-title">Nouvelle remorque</div>
-        <div class="form-group"><label class="form-label">Exploitation</label>
-          <select id="s-exploit" onchange="updateSaisieParc()"></select></div>
-        <div class="form-group"><label class="form-label">Parcelle</label>
-          <select id="s-parcelle"></select></div>
-        <div class="form-group"><label class="form-label">Nombre de caisses</label>
-          <input type="number" id="s-caisses" placeholder="ex : 32" min="1"></div>
-        <div class="form-group"><label class="form-label">Date et heure</label>
-          <input type="datetime-local" id="s-dt"></div>
+        <div class="form-group"><label class="form-label">Exploitation</label><select id="s-exploit" onchange="updateSaisieParc()"></select></div>
+        <div class="form-group"><label class="form-label">Parcelle</label><select id="s-parcelle"></select></div>
+        <div class="form-group"><label class="form-label">Nombre de caisses</label><input type="number" id="s-caisses" placeholder="ex : 32" min="1"></div>
+        <div class="form-group"><label class="form-label">Date et heure</label><input type="datetime-local" id="s-dt"></div>
         <button class="btn btn-primary" id="btn-rem-save" onclick="saveRem()"><i class="ti ti-check"></i> Enregistrer</button>
         <button class="btn btn-secondary" id="btn-rem-cancel" style="display:none" onclick="cancelRem()">Annuler la modification</button>
       </div>
@@ -248,28 +200,19 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
     <div class="screen" id="screen-pressoir">
       <div class="card" style="margin-top:4px" id="form-bon">
         <div class="card-title" id="form-bon-title">Nouveau bon pressoir</div>
-        <div class="form-group"><label class="form-label">Exploitation</label>
-          <select id="p-exploit"></select></div>
-        <div class="form-group"><label class="form-label">Date du bon</label>
-          <input type="date" id="p-date"></div>
-        <div class="form-group"><label class="form-label">Pressoir</label>
-          <select id="p-pressoir"></select></div>
-        <div class="form-group"><label class="form-label">N° bon</label>
-          <input type="text" id="p-bon" placeholder="ex : B019"></div>
-        <div class="form-group"><label class="form-label">Nombre de caisses</label>
-          <input type="number" id="p-caisses" oninput="calcKg()"></div>
-        <div class="form-group"><label class="form-label">Poids total (kg)</label>
-          <input type="number" id="p-poids" oninput="calcKg()">
-          <div class="hint" id="kg-hint"></div></div>
+        <div class="form-group"><label class="form-label">Exploitation</label><select id="p-exploit" onchange="updatePressoirs()"></select></div>
+        <div class="form-group"><label class="form-label">Date du bon</label><input type="date" id="p-date"></div>
+        <div class="form-group"><label class="form-label">Pressoir</label><select id="p-pressoir"></select></div>
+        <div class="form-group"><label class="form-label">N° bon</label><input type="text" id="p-bon" placeholder="ex : B019"></div>
+        <div class="form-group"><label class="form-label">Nombre de caisses</label><input type="number" id="p-caisses" oninput="calcKg()"></div>
+        <div class="form-group"><label class="form-label">Poids total (kg)</label><input type="number" id="p-poids" oninput="calcKg()"><div class="hint" id="kg-hint"></div></div>
         <button class="btn btn-primary" id="btn-bon-save" onclick="saveBon()"><i class="ti ti-check"></i> Enregistrer le bon</button>
         <button class="btn btn-secondary" id="btn-bon-cancel" style="display:none" onclick="cancelBon()">Annuler la modification</button>
       </div>
       <div class="card">
-        <div class="card-title">Récapitulatif pressoir</div>
-        <div id="recap-poids"></div>
-        <div id="recap-pressoirs"></div>
-        <div class="divider"></div>
-        <div id="recap-totaux"></div>
+        <div class="card-title">Récapitulatif</div>
+        <div id="recap-poids"></div><div id="recap-pressoirs"></div>
+        <div class="divider"></div><div id="recap-totaux"></div>
       </div>
       <div class="card"><div class="card-title">Bons enregistrés</div><div id="hist-bons"></div></div>
     </div>
@@ -277,18 +220,12 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
     <!-- HISTORIQUE -->
     <div class="screen" id="screen-histo">
       <div class="card" style="margin-top:4px">
-        <div class="card-title">Comparaison par année</div>
+        <div class="card-title">Comparaison par année — <span id="histo-exploit-label" style="color:var(--accent)"></span></div>
         <div class="etabs" id="etabs-histo"></div>
         <div id="histo-stats"></div>
       </div>
-      <div class="card">
-        <div class="card-title">Rendement kg/ha par parcelle</div>
-        <div id="histo-chart"></div>
-      </div>
-      <div class="card">
-        <div class="card-title">Export des données</div>
-        <div id="export-section"></div>
-      </div>
+      <div class="card"><div class="card-title">Rendement kg/ha par parcelle</div><div id="histo-chart"></div></div>
+      <div class="card"><div class="card-title">Export des données</div><div id="export-section"></div></div>
     </div>
 
     <!-- CONFIG -->
@@ -296,21 +233,20 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
       <div class="card" style="margin-top:4px">
         <div class="card-title">Campagnes</div>
         <div id="config-campagnes"></div>
-        <button class="btn btn-success" id="btn-new-camp" onclick="nouvelleCampagne()"><i class="ti ti-plus"></i> Créer une nouvelle campagne</button>
+        <button class="btn btn-success" id="btn-new-camp" onclick="demanderNouvelleCampagne()"><i class="ti ti-plus"></i> Créer une nouvelle campagne</button>
       </div>
       <div class="card">
         <div class="card-title">Paramètres — campagne <span id="cfg-annee-lbl" style="color:var(--accent)"></span></div>
-        <div class="alert info" id="cfg-readonly-alert" style="display:none"><i class="ti ti-lock"></i> Campagne terminée — paramètres en lecture seule.</div>
-        <div class="form-group"><label class="form-label">Rendement appellation (kg/ha)</label>
-          <input type="number" id="cfg-rdt" oninput="saveConfigParams()"></div>
-        <div class="form-group"><label class="form-label">Poids moyen caisse prévisionnel (kg)</label>
-          <input type="number" id="cfg-poids" oninput="saveConfigParams()">
-          <div class="hint" id="cfg-poids-hint"></div></div>
-        <div class="card-title" style="margin-top:12px">Simulation objectifs</div>
+        <div class="alert info" id="cfg-readonly-alert" style="display:none"><i class="ti ti-lock"></i> Campagne terminée — lecture seule.</div>
+        <div class="form-group"><label class="form-label">Rendement appellation (kg/ha)</label><input type="number" id="cfg-rdt" oninput="saveConfigParams()"></div>
+        <div class="form-group"><label class="form-label">Poids moyen caisse prévisionnel (kg)</label><input type="number" id="cfg-poids" oninput="saveConfigParams()"><div class="hint" id="cfg-poids-hint"></div></div>
+        <div class="card-title" style="margin-top:14px">Simulation objectifs</div>
+        <div class="form-group" style="margin-top:8px"><label class="form-label">Exploitation</label>
+          <select id="cfg-sim-exploit" onchange="renderSimulation()"></select></div>
         <div id="cfg-sim"></div>
       </div>
       <div class="card">
-        <div class="card-title">Exploitations & parcelles</div>
+        <div class="card-title">Exploitations & Parcelles</div>
         <div id="cfg-exploits"></div>
       </div>
     </div>
@@ -324,9 +260,58 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
     <button class="nav-btn" onclick="showScreen('config')" id="nav-config"><i class="ti ti-settings"></i>Config</button>
   </nav>
 </div>
+
+<!-- SOUS-ÉCRAN PARCELLES -->
+<div class="subscreen" id="sub-parcelles">
+  <div class="subscreen-topbar">
+    <button class="back-btn" onclick="closeSubscreen('sub-parcelles')"><i class="ti ti-arrow-left"></i> Config</button>
+    <div><div class="subscreen-title" id="sub-parc-title">Parcelles</div><div class="subscreen-sub" id="sub-parc-sub"></div></div>
+  </div>
+  <div class="subscreen-body">
+    <div class="summary-grid" id="parc-summary"></div>
+    <div class="card"><div class="card-title">Parcelles enregistrées</div><div id="parc-list"></div></div>
+    <div class="card" id="parc-form-card">
+      <div class="card-title" id="parc-form-title">Ajouter une parcelle</div>
+      <div class="form-group"><label class="form-label">Nom</label><input type="text" id="parc-nom" placeholder="ex : Les Grandes Vignes"></div>
+      <div class="form-group"><label class="form-label">Surface (ha)</label><input type="number" id="parc-surface" placeholder="ex : 0.45" step="0.01" min="0.01" oninput="calcParcObj()"></div>
+      <div class="form-group"><label class="form-label">Objectif caisses</label><input type="number" id="parc-obj" placeholder="calculé automatiquement" oninput="manualParcObj=true"><div class="hint" id="parc-calc-hint"></div></div>
+      <button class="btn btn-primary" id="btn-parc-save" onclick="saveParc()"><i class="ti ti-check"></i> Enregistrer</button>
+      <button class="btn btn-secondary" id="btn-parc-cancel" style="display:none" onclick="resetParcForm()">Annuler la modification</button>
+    </div>
+  </div>
+</div>
+
+<!-- SOUS-ÉCRAN PRESSOIRS -->
+<div class="subscreen" id="sub-pressoirs">
+  <div class="subscreen-topbar">
+    <button class="back-btn" onclick="closeSubscreen('sub-pressoirs')"><i class="ti ti-arrow-left"></i> Config</button>
+    <div><div class="subscreen-title" id="sub-press-title">Pressoirs</div><div class="subscreen-sub" id="sub-press-sub"></div></div>
+  </div>
+  <div class="subscreen-body">
+    <div class="alert info" style="margin-bottom:10px"><i class="ti ti-info-circle"></i> Supprimer un pressoir ne modifie pas les bons déjà enregistrés.</div>
+    <div class="card"><div class="card-title">Pressoirs actifs</div><div id="pressoir-list"></div></div>
+    <div class="card">
+      <div class="card-title">Ajouter un pressoir</div>
+      <div class="form-group"><label class="form-label">Nom du pressoir</label><input type="text" id="pressoir-nom" placeholder="ex : MARTIN"></div>
+      <button class="btn btn-primary" onclick="savePressoir()"><i class="ti ti-plus"></i> Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIRMATION -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Confirmation</div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Annuler</button>
+      <button class="btn btn-primary" id="modal-confirm-btn" onclick="modalConfirm()">Confirmer</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
-<!-- FIREBASE -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
@@ -340,301 +325,234 @@ const firebaseConfig = {
   appId: "1:527184043986:web:faba4a97e38c30ff0ab20b"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-// Persistance hors-ligne
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
 enableIndexedDbPersistence(db).catch(()=>{});
 
-// Détection offline
-window.addEventListener('online', ()=>{ document.getElementById('offline-banner').classList.remove('show'); showToast('✓ Connexion rétablie'); });
-window.addEventListener('offline', ()=>{ document.getElementById('offline-banner').classList.add('show'); });
+window.addEventListener('online',()=>{document.getElementById('offline-banner').classList.remove('show');showToast('✓ Connexion rétablie');});
+window.addEventListener('offline',()=>{document.getElementById('offline-banner').classList.add('show');});
 
-// ============================================================
-// ÉTAT LOCAL
-// ============================================================
-let state = {
+// ── ÉTAT ──────────────────────────────────────────────────────
+let S = {
   annee: new Date().getFullYear(),
   exploit: null,
   campagne: null,
   campagnes: {},
+  remorques: {},
+  bons: {},
   editRemId: null,
   editBonId: null,
   histoAnnee: null,
-  unsubscribes: []
+  unsubscribes: [],
+  subExploit: null,
+  editParcIdx: -1,
+  modalCallback: null,
 };
+let manualParcObj = false;
 
-// ============================================================
-// INITIALISATION
-// ============================================================
+// ── INIT ──────────────────────────────────────────────────────
 async function init() {
-  // Charger toutes les campagnes
-  const snap = await getDocs(collection(db, 'campagnes'));
-  if (snap.empty) {
-    // Première utilisation : créer campagne 2025 avec données par défaut
-    await creerCampagneDefaut(2025);
-  } else {
-    snap.forEach(d => { state.campagnes[d.id] = d.data(); });
-  }
-
-  // Sélectionner la campagne active la plus récente
-  const annees = Object.keys(state.campagnes).map(Number).sort((a,b)=>b-a);
-  const active = annees.find(a => state.campagnes[a]?.active) || annees[0];
-  state.annee = active;
-  state.campagne = state.campagnes[active];
-  state.exploit = Object.keys(state.campagne.exploitations)[0];
-  state.histoAnnee = annees[0];
-
-  buildAnneeSelect();
-  buildSaisieSelects();
-  renderTableau();
-  renderConfig();
-  subscribeRemorques();
-  subscribeBons();
+  const snap = await getDocs(collection(db,'campagnes'));
+  if(snap.empty){ await creerCampagneDefaut(2025); }
+  else { snap.forEach(d=>{ S.campagnes[d.id]=d.data(); }); }
+  const annees = Object.keys(S.campagnes).map(Number).sort((a,b)=>b-a);
+  const active = annees.find(a=>S.campagnes[a]?.active)||annees[0];
+  S.annee=active; S.campagne=S.campagnes[active];
+  S.exploit=Object.keys(S.campagne.exploitations)[0];
+  S.histoAnnee=annees[0];
+  buildAnneeSelect(); buildSaisieSelects(); renderTableau(); renderConfig();
+  subscribeRemorques(); subscribeBons();
 }
 
-async function creerCampagneDefaut(annee) {
-  const campData = {
-    rendement: 9120,
-    poidsPrev: 41,
-    active: true,
-    exploitations: {
-      CV: {
-        nom: "CORRE-VADEZ",
-        pressoirs: ["TELMONT","DUPRESSOIR","CHARBAUT","DEPOIVRE"],
-        parcelles: [
-          {nom:"Les Fosses Blancs", surface:0.42, obj:93},
-          {nom:"Les 13 ares", surface:0.13, obj:28},
-          {nom:"Les Cordons", surface:0.38, obj:83},
-          {nom:"Les Sablons", surface:0.80, obj:174},
-          {nom:"Les Chalmonts", surface:0.60, obj:131},
-          {nom:"Fontaine Denis", surface:0.31, obj:67},
-          {nom:"Les Petites", surface:0.28, obj:61},
-        ]
-      },
-      F: {
-        nom: "FIEVET",
-        pressoirs: ["TELMONT"],
-        parcelles: [
-          {nom:"Les Paradis Blancs", surface:0.15, obj:33},
-          {nom:"Les Trouots Noirs", surface:0.13, obj:28},
-        ]
-      }
-    }
-  };
-  await setDoc(doc(db, 'campagnes', String(annee)), campData);
-  state.campagnes[annee] = campData;
+async function creerCampagneDefaut(annee){
+  const c={rendement:9120,poidsPrev:41,active:true,exploitations:{
+    CV:{nom:"CORRE-VADEZ",pressoirs:["TELMONT","DUPRESSOIR","CHARBAUT","DEPOIVRE"],parcelles:[
+      {nom:"Les Fosses Blancs",surface:0.42,obj:93},{nom:"Les 13 ares",surface:0.13,obj:28},
+      {nom:"Les Cordons",surface:0.38,obj:83},{nom:"Les Sablons",surface:0.80,obj:174},
+      {nom:"Les Chalmonts",surface:0.60,obj:131},{nom:"Fontaine Denis",surface:0.31,obj:67},
+      {nom:"Les Petites",surface:0.28,obj:61}]},
+    F:{nom:"FIEVET",pressoirs:["TELMONT"],parcelles:[
+      {nom:"Les Paradis Blancs",surface:0.15,obj:33},{nom:"Les Trouots Noirs",surface:0.13,obj:28}]}
+  }};
+  await setDoc(doc(db,'campagnes',String(annee)),c);
+  S.campagnes[annee]=c;
 }
 
-// ============================================================
-// TEMPS RÉEL — REMORQUES & BONS
-// ============================================================
-function subscribeRemorques() {
-  state.unsubscribes.forEach(u=>u());
-  state.unsubscribes = [];
-  const unsub = onSnapshot(
-    collection(db, 'campagnes', String(state.annee), 'remorques'),
-    snap => {
-      state.remorques = {};
-      snap.forEach(d => { state.remorques[d.id] = {...d.data(), id:d.id}; });
-      renderTableau();
-      if(document.getElementById('screen-saisie').classList.contains('active')) renderHistRem();
-    }
-  );
-  state.unsubscribes.push(unsub);
+// ── TEMPS RÉEL ────────────────────────────────────────────────
+function subscribeRemorques(){
+  S.unsubscribes.forEach(u=>u()); S.unsubscribes=[];
+  S.unsubscribes.push(onSnapshot(collection(db,'campagnes',String(S.annee),'remorques'),snap=>{
+    S.remorques={};
+    snap.forEach(d=>{S.remorques[d.id]={...d.data(),id:d.id};});
+    renderTableau();
+    if(document.getElementById('screen-saisie').classList.contains('active')) renderHistRem();
+  }));
+}
+function subscribeBons(){
+  S.unsubscribes.push(onSnapshot(collection(db,'campagnes',String(S.annee),'bons'),snap=>{
+    S.bons={};
+    snap.forEach(d=>{S.bons[d.id]={...d.data(),id:d.id};});
+    renderTableau();
+    if(document.getElementById('screen-pressoir').classList.contains('active')) renderPressoir();
+  }));
 }
 
-function subscribeBons() {
-  const unsub = onSnapshot(
-    collection(db, 'campagnes', String(state.annee), 'bons'),
-    snap => {
-      state.bons = {};
-      snap.forEach(d => { state.bons[d.id] = {...d.data(), id:d.id}; });
-      renderTableau();
-      if(document.getElementById('screen-pressoir').classList.contains('active')) renderPressoir();
-    }
-  );
-  state.unsubscribes.push(unsub);
+// ── HELPERS ───────────────────────────────────────────────────
+const camp=()=>S.campagne;
+const expl=(e)=>camp().exploitations[e||S.exploit];
+
+function poidsReel(e){
+  const bons=Object.values(S.bons).filter(b=>b.exploit===e);
+  const tc=bons.reduce((a,b)=>a+b.caisses,0),tp=bons.reduce((a,b)=>a+b.poids,0);
+  return tc>0?{val:tp/tc,reel:true}:{val:camp().poidsPrev,reel:false};
 }
 
-// ============================================================
-// HELPERS
-// ============================================================
-function camp() { return state.campagne; }
-function expl(e) { return camp().exploitations[e || state.exploit]; }
-
-function poidsReel(e) {
-  const bons = Object.values(state.bons||{}).filter(b=>b.exploit===e);
-  const tc = bons.reduce((a,b)=>a+b.caisses,0);
-  const tp = bons.reduce((a,b)=>a+b.poids,0);
-  return tc>0 ? {val:tp/tc, reel:true} : {val:camp().poidsPrev, reel:false};
+// Objectif dynamique : surface × rendement ÷ poids réel (ou prévisionnel)
+function objDynamique(e,p){
+  const pm=poidsReel(e);
+  return Math.round(p.surface*camp().rendement/pm.val);
 }
 
-function totSorties(e, parc) {
-  return Object.values(state.remorques||{})
-    .filter(r=>r.exploit===e && r.parcelle===parc)
-    .reduce((a,r)=>a+r.caisses,0);
+function totSorties(e,parc){
+  return Object.values(S.remorques).filter(r=>r.exploit===e&&r.parcelle===parc).reduce((a,r)=>a+r.caisses,0);
 }
+const today=()=>new Date().toISOString().split('T')[0];
+function nowDT(){const n=new Date();return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0')+'T'+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');}
 
-function today() { return new Date().toISOString().split('T')[0]; }
-function nowDT() {
-  const n=new Date();
-  return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0')+'T'+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');
+// ── MODAL ─────────────────────────────────────────────────────
+function showModal(title,body,confirmLabel,confirmClass,callback){
+  document.getElementById('modal-title').textContent=title;
+  document.getElementById('modal-body').textContent=body;
+  const btn=document.getElementById('modal-confirm-btn');
+  btn.textContent=confirmLabel;
+  btn.className='btn '+(confirmClass||'btn-primary');
+  S.modalCallback=callback;
+  document.getElementById('modal-overlay').classList.add('active');
 }
+window.closeModal=function(){document.getElementById('modal-overlay').classList.remove('active');S.modalCallback=null;}
+window.modalConfirm=function(){if(S.modalCallback){S.modalCallback();}closeModal();}
 
-// ============================================================
-// NAVIGATION
-// ============================================================
-window.showScreen = function(name) {
+// ── NAVIGATION ────────────────────────────────────────────────
+window.showScreen=function(name){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('screen-'+name).classList.add('active');
   document.getElementById('nav-'+name).classList.add('active');
-  const renders = {
-    tableau: renderTableau,
-    saisie: ()=>{ renderHistRem(); buildSaisieSelects(); },
-    pressoir: renderPressoir,
-    histo: renderHisto,
-    config: renderConfig
-  };
-  if(renders[name]) renders[name]();
+  ({tableau:renderTableau,saisie:()=>{renderHistRem();buildSaisieSelects();},pressoir:renderPressoir,histo:renderHisto,config:renderConfig})[name]?.();
+}
+window.openSubscreen=function(id){document.getElementById(id).classList.add('active');}
+window.closeSubscreen=function(id){document.getElementById(id).classList.remove('active');renderConfig();}
+
+// ── ANNÉE ─────────────────────────────────────────────────────
+function buildAnneeSelect(){
+  document.getElementById('annee-sel').innerHTML=Object.keys(S.campagnes).sort((a,b)=>b-a).map(a=>`<option value="${a}" ${a==S.annee?'selected':''}>${a}</option>`).join('');
+}
+window.changerAnnee=async function(){
+  S.annee=parseInt(document.getElementById('annee-sel').value);
+  if(!S.campagnes[S.annee]){const snap=await getDoc(doc(db,'campagnes',String(S.annee)));if(snap.exists())S.campagnes[S.annee]=snap.data();}
+  S.campagne=S.campagnes[S.annee];
+  S.exploit=Object.keys(S.campagne.exploitations)[0];
+  S.remorques={}; S.bons={};
+  buildSaisieSelects(); subscribeRemorques(); subscribeBons();
+  buildEtabs('etabs-tableau'); renderTableau();
 }
 
-// ============================================================
-// ANNÉE
-// ============================================================
-function buildAnneeSelect() {
-  const sel = document.getElementById('annee-sel');
-  const annees = Object.keys(state.campagnes).sort((a,b)=>b-a);
-  sel.innerHTML = annees.map(a=>`<option value="${a}" ${a==state.annee?'selected':''}>${a}</option>`).join('');
-}
-
-window.changerAnnee = async function() {
-  state.annee = parseInt(document.getElementById('annee-sel').value);
-  if(!state.campagnes[state.annee]) {
-    const snap = await getDoc(doc(db,'campagnes',String(state.annee)));
-    if(snap.exists()) state.campagnes[state.annee] = snap.data();
-  }
-  state.campagne = state.campagnes[state.annee];
-  state.exploit = Object.keys(state.campagne.exploitations)[0];
-  state.remorques = {};
-  state.bons = {};
-  buildSaisieSelects();
-  subscribeRemorques();
-  subscribeBons();
-  buildEtabs('etabs-tableau');
-  renderTableau();
-  document.getElementById('topbar-sub').textContent = expl().nom+' · '+state.annee;
-}
-
-// ============================================================
-// EXPLOIT TABS
-// ============================================================
-function buildEtabs(id) {
-  const exploits = Object.keys(camp().exploitations);
-  document.getElementById(id).innerHTML = exploits.map((e,i)=>
-    `<button class="etab ${e===state.exploit?'active':''}" onclick="setExploit('${e}','${id}')">${camp().exploitations[e].nom}</button>`
+// ── EXPLOIT TABS ──────────────────────────────────────────────
+function buildEtabs(id){
+  document.getElementById(id).innerHTML=Object.keys(camp().exploitations).map((e,i)=>
+    `<button class="etab ${e===S.exploit?'active':''}" onclick="setExploit('${e}','${id}')">${camp().exploitations[e].nom}</button>`
   ).join('');
 }
-
-window.setExploit = function(e, tabsId) {
-  state.exploit = e;
-  document.querySelectorAll('#'+tabsId+' .etab').forEach((b,i)=>{
-    b.classList.toggle('active', Object.keys(camp().exploitations)[i]===e);
-  });
-  document.getElementById('topbar-sub').textContent = expl().nom+' · '+state.annee;
+window.setExploit=function(e,tabsId){
+  S.exploit=e;
+  document.querySelectorAll('#'+tabsId+' .etab').forEach((b,i)=>b.classList.toggle('active',Object.keys(camp().exploitations)[i]===e));
+  document.getElementById('topbar-sub').textContent=expl().nom+' · '+S.annee;
   renderTableau();
+  // Sync historique avec l'exploitation sélectionnée
+  if(document.getElementById('screen-histo').classList.contains('active')) renderHisto();
 }
 
-// ============================================================
-// TABLEAU
-// ============================================================
-function renderTableau() {
-  if(!state.campagne) return;
+// ── TABLEAU ───────────────────────────────────────────────────
+function renderTableau(){
+  if(!S.campagne) return;
   buildEtabs('etabs-tableau');
-  const d = expl();
-  const pm = poidsReel(state.exploit);
-  const totS = d.parcelles.reduce((a,p)=>a+totSorties(state.exploit,p.nom),0);
-  const totO = d.parcelles.reduce((a,p)=>a+p.obj,0);
-  const restant = Math.max(0,totO-totS);
-  const pct = totO>0?Math.round(totS/totO*100):0;
-  const surfTot = d.parcelles.reduce((a,p)=>a+p.surface,0);
-  const rdtG = surfTot>0?Math.round(totS*pm.val/surfTot):0;
+  const d=expl(), pm=poidsReel(S.exploit);
+  // Objectif dynamique basé sur poids réel
+  const totS=d.parcelles.reduce((a,p)=>a+totSorties(S.exploit,p.nom),0);
+  const totO=d.parcelles.reduce((a,p)=>a+objDynamique(S.exploit,p),0);
+  const totKgObj=Math.round(totO*pm.val);
+  const totKgRecolte=Math.round(totS*pm.val);
+  const restant=Math.max(0,totO-totS);
+  const pct=totO>0?Math.round(totS/totO*100):0;
+  const surfTot=d.parcelles.reduce((a,p)=>a+p.surface,0);
+  const rdtG=surfTot>0&&totS>0?Math.round(totS*pm.val/surfTot):0;
 
-  document.getElementById('topbar-sub').textContent = d.nom+' · '+state.annee;
-  document.getElementById('poids-badge-wrap').innerHTML = pm.reel
-    ? `<div class="poids-badge reel"><i class="ti ti-weight" style="font-size:12px"></i> Poids réel : ${pm.val.toFixed(2)} kg/caisse</div>`
-    : `<div class="poids-badge prev"><i class="ti ti-clock" style="font-size:12px"></i> Prévisionnel : ${pm.val} kg/caisse</div>`;
+  document.getElementById('topbar-sub').textContent=d.nom+' · '+S.annee;
+  document.getElementById('poids-badge-wrap').innerHTML=pm.reel
+    ?`<div class="poids-badge reel"><i class="ti ti-weight" style="font-size:12px"></i> Poids réel : ${pm.val.toFixed(2)} kg/caisse</div>`
+    :`<div class="poids-badge prev"><i class="ti ti-clock" style="font-size:12px"></i> Prévisionnel : ${pm.val} kg/caisse</div>`;
 
-  document.getElementById('stats-row').innerHTML = `
-    <div class="stat"><div class="stat-label">Caisses sorties</div><div class="stat-val">${totS}</div></div>
-    <div class="stat"><div class="stat-label">Objectif</div><div class="stat-val">${totO}</div></div>
-    <div class="stat"><div class="stat-label">Restant</div><div class="stat-val amber">${restant}</div></div>
-    <div class="stat"><div class="stat-label">Avancement</div><div class="stat-val green">${pct}%</div></div>`;
+  // 4 vignettes : Caisses sorties, Restant, Objectif kg appellation, Récolté kg
+  document.getElementById('stats-row').innerHTML=`
+    <div class="stat"><div class="stat-label">Caisses sorties</div><div class="stat-val">${totS}</div><div class="stat-sub">obj. ${totO} caisses</div></div>
+    <div class="stat"><div class="stat-label">Restant</div><div class="stat-val amber">${restant}</div><div class="stat-sub">caisses</div></div>
+    <div class="stat"><div class="stat-label">Objectif appellation</div><div class="stat-val blue">${(totKgObj/1000).toFixed(1)}<span style="font-size:13px;font-weight:400"> t</span></div><div class="stat-sub">${totKgObj.toLocaleString()} kg</div></div>
+    <div class="stat"><div class="stat-label">Récolté</div><div class="stat-val green">${(totKgRecolte/1000).toFixed(1)}<span style="font-size:13px;font-weight:400"> t</span></div><div class="stat-sub">${totKgRecolte.toLocaleString()} kg</div></div>`;
 
-  document.getElementById('prog-pct-lbl').textContent = pct+'%';
-  document.getElementById('prog-fill').style.width = Math.min(pct,100)+'%';
+  document.getElementById('prog-pct-lbl').textContent=pct+'%';
+  document.getElementById('prog-fill').style.width=Math.min(pct,100)+'%';
 
-  let rows = d.parcelles.map(p=>{
-    const s=totSorties(state.exploit,p.nom), ec=s-p.obj, pct2=p.obj>0?Math.round(s/p.obj*100):0;
-    const rha=Math.round(s*pm.val/p.surface);
+  let rows=d.parcelles.map(p=>{
+    const s=totSorties(S.exploit,p.nom);
+    const obj=objDynamique(S.exploit,p);
+    const ec=s-obj, pct2=obj>0?Math.round(s/obj*100):0;
+    const rha=s>0?Math.round(s*pm.val/p.surface):0;
     const ecH=ec>0?`<span class="dp">+${ec}</span>`:ec<0?`<span class="dn">${ec}</span>`:'—';
     const badge=pct2>=100?'<span class="badge done">Terminé</span>':pct2>0?`<span class="badge prog">${pct2}%</span>`:'<span class="badge todo">À faire</span>';
-    return `<tr><td title="${p.nom}">${p.nom}</td><td>${s}</td><td>${p.obj}</td><td>${ecH}</td><td>${s>0?rha.toLocaleString():'—'}</td><td>${badge}</td></tr>`;
+    return `<tr><td title="${p.nom}">${p.nom}</td><td>${s}</td><td>${obj}</td><td>${ecH}</td><td>${s>0?rha.toLocaleString():'—'}</td><td>${badge}</td></tr>`;
   }).join('');
   const totEc=totS-totO;
   rows+=`<tr class="total-row"><td>Total</td><td>${totS}</td><td>${totO}</td><td>${totEc>0?`<span class="dp">+${totEc}</span>`:totEc<0?`<span class="dn">${totEc}</span>`:'—'}</td><td>${rdtG>0?rdtG.toLocaleString():'—'}</td><td></td></tr>`;
-  document.getElementById('parc-tbody').innerHTML = rows;
+  document.getElementById('parc-tbody').innerHTML=rows;
 }
 
-// ============================================================
-// SAISIE REMORQUES
-// ============================================================
-function buildSaisieSelects() {
-  if(!state.campagne) return;
-  const exploits = Object.keys(camp().exploitations);
-  const selE = document.getElementById('s-exploit');
-  const selPE = document.getElementById('p-exploit');
-  selE.innerHTML = exploits.map(e=>`<option value="${e}">${camp().exploitations[e].nom}</option>`).join('');
-  selPE.innerHTML = exploits.map(e=>`<option value="${e}">${camp().exploitations[e].nom}</option>`).join('');
-  updateSaisieParc();
-  updatePressoirs();
-  document.getElementById('s-dt').value = nowDT();
-  document.getElementById('p-date').value = today();
+// ── SAISIE REMORQUES ──────────────────────────────────────────
+function buildSaisieSelects(){
+  if(!S.campagne) return;
+  const exploits=Object.keys(camp().exploitations);
+  document.getElementById('s-exploit').innerHTML=exploits.map(e=>`<option value="${e}">${camp().exploitations[e].nom}</option>`).join('');
+  document.getElementById('p-exploit').innerHTML=exploits.map(e=>`<option value="${e}">${camp().exploitations[e].nom}</option>`).join('');
+  updateSaisieParc(); updatePressoirs();
+  document.getElementById('s-dt').value=nowDT();
+  document.getElementById('p-date').value=today();
 }
-
-window.updateSaisieParc = function() {
-  const e = document.getElementById('s-exploit').value;
-  document.getElementById('s-parcelle').innerHTML = camp().exploitations[e].parcelles.map(p=>`<option>${p.nom}</option>`).join('');
+window.updateSaisieParc=function(){
+  const e=document.getElementById('s-exploit').value;
+  document.getElementById('s-parcelle').innerHTML=camp().exploitations[e].parcelles.map(p=>`<option>${p.nom}</option>`).join('');
 }
-
-function updatePressoirs() {
-  const e = document.getElementById('p-exploit')?.value || Object.keys(camp().exploitations)[0];
-  document.getElementById('p-pressoir').innerHTML = camp().exploitations[e].pressoirs.map(p=>`<option>${p}</option>`).join('');
+window.updatePressoirs=function(){
+  const e=document.getElementById('p-exploit')?.value||Object.keys(camp().exploitations)[0];
+  if(camp().exploitations[e])
+    document.getElementById('p-pressoir').innerHTML=camp().exploitations[e].pressoirs.map(p=>`<option>${p}</option>`).join('');
 }
-
-function renderHistRem() {
-  const all = Object.values(state.remorques||{}).sort((a,b)=>b.dt.localeCompare(a.dt));
-  if(all.length===0){document.getElementById('hist-rem').innerHTML='<div style="padding:12px;text-align:center;font-size:13px;color:var(--text3)">Aucune remorque enregistrée.</div>';return;}
-  document.getElementById('hist-rem').innerHTML = all.map(r=>{
+function renderHistRem(){
+  const all=Object.values(S.remorques).sort((a,b)=>b.dt.localeCompare(a.dt));
+  if(!all.length){document.getElementById('hist-rem').innerHTML='<div style="padding:16px;text-align:center;font-size:13px;color:var(--text3)">Aucune remorque enregistrée.</div>';return;}
+  document.getElementById('hist-rem').innerHTML=all.map(r=>{
     const dt=new Date(r.dt);
     const ds=dt.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})+' · '+dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-    const enom=camp().exploitations[r.exploit]?.nom||r.exploit;
     return `<div class="hist-item">
-      <div style="flex:1;min-width:0"><div class="hist-main">${r.parcelle}</div><div class="hist-sub">${enom} · ${ds}</div></div>
+      <div style="flex:1;min-width:0"><div class="hist-main">${r.parcelle}</div><div class="hist-sub">${camp().exploitations[r.exploit]?.nom||r.exploit} · ${ds}</div></div>
       <div class="hist-val">${r.caisses} caisses</div>
       <div class="hist-actions">
-        <button class="icon-btn" onclick="editRem('${r.id}')" aria-label="Modifier"><i class="ti ti-edit" style="font-size:15px"></i></button>
-        <button class="icon-btn danger" onclick="deleteRem('${r.id}')" aria-label="Supprimer"><i class="ti ti-trash" style="font-size:15px"></i></button>
+        <button class="icon-btn" onclick="editRem('${r.id}')"><i class="ti ti-edit" style="font-size:15px"></i></button>
+        <button class="icon-btn danger" onclick="confirmDeleteRem('${r.id}')"><i class="ti ti-trash" style="font-size:15px"></i></button>
       </div></div>`;
   }).join('');
 }
-
-window.editRem = function(id) {
-  const r=state.remorques[id];
-  state.editRemId=id;
-  document.getElementById('s-exploit').value=r.exploit;
-  updateSaisieParc();
+window.editRem=function(id){
+  const r=S.remorques[id]; S.editRemId=id;
+  document.getElementById('s-exploit').value=r.exploit; updateSaisieParc();
   document.getElementById('s-parcelle').value=r.parcelle;
   document.getElementById('s-caisses').value=r.caisses;
   document.getElementById('s-dt').value=r.dt;
@@ -643,32 +561,24 @@ window.editRem = function(id) {
   document.getElementById('btn-rem-cancel').style.display='block';
   document.getElementById('form-rem').scrollIntoView({behavior:'smooth'});
 }
-
-window.deleteRem = async function(id) {
-  await deleteDoc(doc(db,'campagnes',String(state.annee),'remorques',id));
-  showToast('Remorque supprimée');
+window.confirmDeleteRem=function(id){
+  showModal('Supprimer la remorque','Confirmer la suppression de cette remorque ? Cette action est irréversible.','Supprimer','btn-danger',async()=>{
+    await deleteDoc(doc(db,'campagnes',String(S.annee),'remorques',id));
+    showToast('Remorque supprimée');
+  });
 }
-
-window.saveRem = async function() {
-  const e=document.getElementById('s-exploit').value;
-  const parc=document.getElementById('s-parcelle').value;
-  const caisses=parseInt(document.getElementById('s-caisses').value);
-  const dt=document.getElementById('s-dt').value;
+window.saveRem=async function(){
+  const e=document.getElementById('s-exploit').value,parc=document.getElementById('s-parcelle').value;
+  const caisses=parseInt(document.getElementById('s-caisses').value),dt=document.getElementById('s-dt').value;
   if(!caisses||caisses<=0){showToast('Nombre de caisses invalide');return;}
   if(!dt){showToast('Date et heure requises');return;}
   const obj={exploit:e,parcelle:parc,caisses,dt};
-  if(state.editRemId){
-    await updateDoc(doc(db,'campagnes',String(state.annee),'remorques',state.editRemId),obj);
-    showToast('Remorque modifiée');
-  } else {
-    await addDoc(collection(db,'campagnes',String(state.annee),'remorques'),obj);
-    showToast('✓ '+caisses+' caisses — '+parc);
-  }
+  if(S.editRemId){await updateDoc(doc(db,'campagnes',String(S.annee),'remorques',S.editRemId),obj);showToast('Remorque modifiée');}
+  else{await addDoc(collection(db,'campagnes',String(S.annee),'remorques'),obj);showToast('✓ '+caisses+' caisses — '+parc);}
   cancelRem();
 }
-
-window.cancelRem = function() {
-  state.editRemId=null;
+window.cancelRem=function(){
+  S.editRemId=null;
   document.getElementById('s-caisses').value='';
   document.getElementById('s-dt').value=nowDT();
   document.getElementById('form-rem-title').textContent='Nouvelle remorque';
@@ -676,92 +586,71 @@ window.cancelRem = function() {
   document.getElementById('btn-rem-cancel').style.display='none';
 }
 
-// ============================================================
-// PRESSOIR
-// ============================================================
-window.calcKg = function() {
-  const c=parseInt(document.getElementById('p-caisses').value);
-  const p=parseFloat(document.getElementById('p-poids').value);
+// ── PRESSOIR ──────────────────────────────────────────────────
+window.calcKg=function(){
+  const c=parseInt(document.getElementById('p-caisses').value),p=parseFloat(document.getElementById('p-poids').value);
   document.getElementById('kg-hint').textContent=c>0&&p>0?'→ '+(p/c).toFixed(2)+' kg / caisse':'';
 }
-
-function renderPressoir() {
+function renderPressoir(){
   buildSaisieSelects();
-  const e='CV';
-  const bons=Object.values(state.bons||{}).filter(b=>b.exploit===e);
-  const totC=bons.reduce((a,b)=>a+b.caisses,0);
-  const totP=bons.reduce((a,b)=>a+b.poids,0);
-  const totRem=Object.values(state.remorques||{}).filter(r=>r.exploit===e).reduce((a,r)=>a+r.caisses,0);
-  const ecart=totRem-totC;
-  const pm=poidsReel(e);
+  const e='CV',bons=Object.values(S.bons).filter(b=>b.exploit===e);
+  const totC=bons.reduce((a,b)=>a+b.caisses,0),totP=bons.reduce((a,b)=>a+b.poids,0);
+  const totRem=Object.values(S.remorques).filter(r=>r.exploit===e).reduce((a,r)=>a+r.caisses,0);
+  const ecart=totRem-totC,pm=poidsReel(e);
   document.getElementById('recap-poids').innerHTML=pm.reel
     ?`<div class="alert ok"><i class="ti ti-check"></i> Poids réel : <strong>${pm.val.toFixed(2)} kg/caisse</strong> (${totP.toLocaleString()} kg / ${totC} caisses)</div>`
     :`<div class="alert warn"><i class="ti ti-clock"></i> Prévisionnel : <strong>${pm.val} kg/caisse</strong> — en attente des premiers bons</div>`;
   const pressoirs={};
   bons.forEach(b=>{pressoirs[b.pressoir]=(pressoirs[b.pressoir]||0)+b.poids;});
-  document.getElementById('recap-pressoirs').innerHTML=Object.entries(pressoirs).map(([k,v])=>
-    `<div class="tot-row"><span class="lbl">${k}</span><span>${v.toLocaleString()} kg</span></div>`).join('');
+  document.getElementById('recap-pressoirs').innerHTML=Object.entries(pressoirs).map(([k,v])=>`<div class="tot-row"><span class="lbl">${k}</span><span>${v.toLocaleString()} kg</span></div>`).join('');
   document.getElementById('recap-totaux').innerHTML=`
     <div class="tot-row bold"><span class="lbl">Sorties vignes</span><span>${totRem}</span></div>
     <div class="tot-row bold"><span class="lbl">Caisses pesées</span><span>${totC}</span></div>
     <div class="tot-row bold"><span class="lbl">Écart</span><span style="color:${ecart!==0?'var(--red)':'var(--accent)'}">${ecart>0?'+':''}${ecart}</span></div>
     <div class="tot-row bold"><span class="lbl">Poids total</span><span>${totP.toLocaleString()} kg</span></div>`;
-  const sortedBons=bons.sort((a,b)=>b.date.localeCompare(a.date));
-  document.getElementById('hist-bons').innerHTML=sortedBons.length===0
-    ?'<div style="padding:12px;text-align:center;font-size:13px;color:var(--text3)">Aucun bon enregistré.</div>'
-    :sortedBons.map(b=>{
+  document.getElementById('hist-bons').innerHTML=!bons.length
+    ?'<div style="padding:16px;text-align:center;font-size:13px;color:var(--text3)">Aucun bon enregistré.</div>'
+    :bons.sort((a,b)=>b.date.localeCompare(a.date)).map(b=>{
       const kg=b.caisses>0?(b.poids/b.caisses).toFixed(1):'-';
       return `<div class="hist-item">
         <div style="flex:1;min-width:0"><div class="hist-main">${b.bon||'—'} · ${b.pressoir}</div><div class="hist-sub">${b.date} · ${b.caisses} caisses · ${kg} kg/caisse</div></div>
         <div class="hist-val">${b.poids.toLocaleString()} kg</div>
         <div class="hist-actions">
-          <button class="icon-btn" onclick="editBon('${b.id}')" aria-label="Modifier"><i class="ti ti-edit" style="font-size:15px"></i></button>
-          <button class="icon-btn danger" onclick="deleteBon('${b.id}')" aria-label="Supprimer"><i class="ti ti-trash" style="font-size:15px"></i></button>
+          <button class="icon-btn" onclick="editBon('${b.id}')"><i class="ti ti-edit" style="font-size:15px"></i></button>
+          <button class="icon-btn danger" onclick="confirmDeleteBon('${b.id}')"><i class="ti ti-trash" style="font-size:15px"></i></button>
         </div></div>`;
     }).join('');
 }
-
-window.editBon = function(id) {
-  const b=state.bons[id];
-  state.editBonId=id;
+window.editBon=function(id){
+  const b=S.bons[id]; S.editBonId=id;
   document.getElementById('p-date').value=b.date;
   document.getElementById('p-pressoir').value=b.pressoir;
   document.getElementById('p-bon').value=b.bon||'';
   document.getElementById('p-caisses').value=b.caisses;
-  document.getElementById('p-poids').value=b.poids;
-  calcKg();
+  document.getElementById('p-poids').value=b.poids; calcKg();
   document.getElementById('form-bon-title').textContent='Modifier bon '+(b.bon||'');
   document.getElementById('btn-bon-save').innerHTML='<i class="ti ti-check"></i> Enregistrer les modifications';
   document.getElementById('btn-bon-cancel').style.display='block';
   document.getElementById('form-bon').scrollIntoView({behavior:'smooth'});
 }
-
-window.deleteBon = async function(id) {
-  await deleteDoc(doc(db,'campagnes',String(state.annee),'bons',id));
-  showToast('Bon supprimé');
+window.confirmDeleteBon=function(id){
+  showModal('Supprimer le bon','Confirmer la suppression de ce bon pressoir ?','Supprimer','btn-danger',async()=>{
+    await deleteDoc(doc(db,'campagnes',String(S.annee),'bons',id));
+    showToast('Bon supprimé');
+  });
 }
-
-window.saveBon = async function() {
-  const e=document.getElementById('p-exploit').value;
-  const date=document.getElementById('p-date').value;
-  const pressoir=document.getElementById('p-pressoir').value;
-  const bon=document.getElementById('p-bon').value;
-  const caisses=parseInt(document.getElementById('p-caisses').value);
-  const poids=parseFloat(document.getElementById('p-poids').value);
+window.saveBon=async function(){
+  const e=document.getElementById('p-exploit').value,date=document.getElementById('p-date').value;
+  const pressoir=document.getElementById('p-pressoir').value,bon=document.getElementById('p-bon').value;
+  const caisses=parseInt(document.getElementById('p-caisses').value),poids=parseFloat(document.getElementById('p-poids').value);
   if(!date||!caisses||!poids){showToast('Remplis tous les champs obligatoires');return;}
   const obj={exploit:e,date,pressoir,bon,caisses,poids};
-  if(state.editBonId){
-    await updateDoc(doc(db,'campagnes',String(state.annee),'bons',state.editBonId),obj);
-    showToast('Bon modifié · '+(poids/caisses).toFixed(1)+' kg/caisse');
-  } else {
-    await addDoc(collection(db,'campagnes',String(state.annee),'bons'),obj);
-    showToast('Bon enregistré · '+(poids/caisses).toFixed(1)+' kg/caisse');
-  }
+  if(S.editBonId){await updateDoc(doc(db,'campagnes',String(S.annee),'bons',S.editBonId),obj);showToast('Bon modifié · '+(poids/caisses).toFixed(1)+' kg/caisse');}
+  else{await addDoc(collection(db,'campagnes',String(S.annee),'bons'),obj);showToast('Bon enregistré · '+(poids/caisses).toFixed(1)+' kg/caisse');}
   cancelBon();
 }
-
-window.cancelBon = function() {
-  state.editBonId=null;
+window.cancelBon=function(){
+  S.editBonId=null;
   ['p-bon','p-caisses','p-poids'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('p-date').value=today();
   document.getElementById('kg-hint').textContent='';
@@ -770,47 +659,44 @@ window.cancelBon = function() {
   document.getElementById('btn-bon-cancel').style.display='none';
 }
 
-// ============================================================
-// HISTORIQUE
-// ============================================================
-async function renderHisto() {
-  const annees=Object.keys(state.campagnes).sort((a,b)=>b-a);
-  if(!state.histoAnnee) state.histoAnnee=annees[0];
+// ── HISTORIQUE ────────────────────────────────────────────────
+async function renderHisto(){
+  // L'historique suit l'exploitation sélectionnée dans Tableau
+  document.getElementById('histo-exploit-label').textContent=expl().nom;
+  const annees=Object.keys(S.campagnes).sort((a,b)=>b-a);
+  if(!S.histoAnnee) S.histoAnnee=annees[0];
   document.getElementById('etabs-histo').innerHTML=annees.map((a,i)=>
-    `<button class="etab ${a==state.histoAnnee?'active':''}" onclick="setHistoAnnee(${a},this)">${a}</button>`
+    `<button class="etab ${a==S.histoAnnee?'active':''}" onclick="setHistoAnnee(${a},this)">${a}</button>`
   ).join('');
-  await renderHistoContent(state.histoAnnee);
+  await renderHistoContent(S.histoAnnee);
   renderExport();
 }
-
-window.setHistoAnnee = async function(a,btn) {
-  state.histoAnnee=a;
+window.setHistoAnnee=async function(a,btn){
+  S.histoAnnee=a;
   document.querySelectorAll('#etabs-histo .etab').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   await renderHistoContent(a);
 }
-
-async function renderHistoContent(a) {
-  const c=state.campagnes[a];
-  if(!c) return;
-  const remSnap=await getDocs(collection(db,'campagnes',String(a),'remorques'));
-  const bonSnap=await getDocs(collection(db,'campagnes',String(a),'bons'));
+async function renderHistoContent(a){
+  const c=S.campagnes[a]; if(!c) return;
+  const e=S.exploit;
+  if(!c.exploitations[e]){document.getElementById('histo-stats').innerHTML='<div style="font-size:13px;color:var(--text3);padding:8px">Exploitation absente cette année.</div>';return;}
+  const [remSnap,bonSnap]=await Promise.all([getDocs(collection(db,'campagnes',String(a),'remorques')),getDocs(collection(db,'campagnes',String(a),'bons'))]);
   const rems=[],bons=[];
-  remSnap.forEach(d=>rems.push(d.data()));
-  bonSnap.forEach(d=>bons.push(d.data()));
-  const e='CV', d=c.exploitations[e];
+  remSnap.forEach(d=>rems.push(d.data())); bonSnap.forEach(d=>bons.push(d.data()));
+  const d=c.exploitations[e];
   const totC=bons.filter(b=>b.exploit===e).reduce((s,b)=>s+b.caisses,0);
   const totP=bons.filter(b=>b.exploit===e).reduce((s,b)=>s+b.poids,0);
   const pm=totC>0?totP/totC:c.poidsPrev;
   const totS=d.parcelles.reduce((s,p)=>s+rems.filter(r=>r.exploit===e&&r.parcelle===p.nom).reduce((a,r)=>a+r.caisses,0),0);
-  const totO=d.parcelles.reduce((s,p)=>s+p.obj,0);
+  const totO=d.parcelles.reduce((s,p)=>s+Math.round(p.surface*c.rendement/pm),0);
   const surf=d.parcelles.reduce((s,p)=>s+p.surface,0);
   const rdtHa=surf>0&&totS>0?Math.round(totS*pm/surf):0;
   document.getElementById('histo-stats').innerHTML=`
     <div class="stat-row">
       <div class="stat"><div class="stat-label">Caisses récoltées</div><div class="stat-val">${totS}</div></div>
       <div class="stat"><div class="stat-label">Objectif</div><div class="stat-val">${totO}</div></div>
-      <div class="stat"><div class="stat-label">Poids total</div><div class="stat-val blue">${totP.toLocaleString()}</div></div>
+      <div class="stat"><div class="stat-label">Poids total</div><div class="stat-val blue">${(totP/1000).toFixed(1)}<span style="font-size:13px"> t</span></div></div>
       <div class="stat"><div class="stat-label">Rdt réel kg/ha</div><div class="stat-val green">${rdtHa>0?rdtHa.toLocaleString():'—'}</div></div>
     </div>`;
   const maxRdt=Math.max(...d.parcelles.map(p=>{
@@ -820,171 +706,315 @@ async function renderHistoContent(a) {
   document.getElementById('histo-chart').innerHTML=d.parcelles.map(p=>{
     const s=rems.filter(r=>r.exploit===e&&r.parcelle===p.nom).reduce((a,r)=>a+r.caisses,0);
     const rdt=s>0?Math.round(s*pm/p.surface):0;
-    const w=Math.round(rdt/maxRdt*100);
-    return `<div class="bar-row"><span class="bar-label" title="${p.nom}">${p.nom}</span><div class="bar-track"><div class="bar-fill" style="width:${w}%"></div></div><span class="bar-val">${rdt>0?rdt.toLocaleString():'—'} kg/ha</span></div>`;
+    return `<div class="bar-row"><span class="bar-label" title="${p.nom}">${p.nom}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.round(rdt/maxRdt*100)}%"></div></div><span class="bar-val">${rdt>0?rdt.toLocaleString():'—'} kg/ha</span></div>`;
   }).join('');
 }
-
-function renderExport() {
+function renderExport(){
   document.getElementById('export-section').innerHTML=`
-    <p style="font-size:12px;color:var(--text2);margin-bottom:10px">Télécharge les données de la campagne ${state.annee} au format CSV, importable dans Excel.</p>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:10px">Données de la campagne ${S.annee} — importables dans Excel.</p>
     <div class="export-row">
       <button class="export-btn" onclick="exportRemorques()"><i class="ti ti-table-export" style="font-size:15px"></i> Remorques</button>
       <button class="export-btn" onclick="exportBons()"><i class="ti ti-table-export" style="font-size:15px"></i> Bons pressoir</button>
     </div>
-    <div class="export-row">
-      <button class="export-btn" onclick="exportRecap()"><i class="ti ti-table-export" style="font-size:15px"></i> Récapitulatif</button>
-    </div>`;
+    <div class="export-row"><button class="export-btn" onclick="exportRecap()"><i class="ti ti-table-export" style="font-size:15px"></i> Récapitulatif parcelles</button></div>`;
 }
-
-window.exportRemorques = function() {
-  const rems=Object.values(state.remorques||{}).sort((a,b)=>a.dt.localeCompare(b.dt));
+window.exportRemorques=function(){
   let csv='Exploitation;Parcelle;Caisses;Date;Heure\n';
-  rems.forEach(r=>{
+  Object.values(S.remorques).sort((a,b)=>a.dt.localeCompare(b.dt)).forEach(r=>{
     const dt=new Date(r.dt);
-    const date=dt.toLocaleDateString('fr-FR');
-    const heure=dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-    const nom=camp().exploitations[r.exploit]?.nom||r.exploit;
-    csv+=`${nom};${r.parcelle};${r.caisses};${date};${heure}\n`;
+    csv+=`${camp().exploitations[r.exploit]?.nom||r.exploit};${r.parcelle};${r.caisses};${dt.toLocaleDateString('fr-FR')};${dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}\n`;
   });
-  downloadCSV(csv,`remorques_${state.annee}.csv`);
+  dlCSV(csv,`remorques_${S.annee}.csv`);
 }
-
-window.exportBons = function() {
-  const bons=Object.values(state.bons||{}).sort((a,b)=>a.date.localeCompare(b.date));
+window.exportBons=function(){
   let csv='Exploitation;Date;Pressoir;N° Bon;Caisses;Poids (kg);kg/caisse\n';
-  bons.forEach(b=>{
-    const kg=b.caisses>0?(b.poids/b.caisses).toFixed(2):'-';
-    const nom=camp().exploitations[b.exploit]?.nom||b.exploit;
-    csv+=`${nom};${b.date};${b.pressoir};${b.bon||''};${b.caisses};${b.poids};${kg}\n`;
+  Object.values(S.bons).sort((a,b)=>a.date.localeCompare(b.date)).forEach(b=>{
+    csv+=`${camp().exploitations[b.exploit]?.nom||b.exploit};${b.date};${b.pressoir};${b.bon||''};${b.caisses};${b.poids};${b.caisses>0?(b.poids/b.caisses).toFixed(2):''}\n`;
   });
-  downloadCSV(csv,`bons_pressoir_${state.annee}.csv`);
+  dlCSV(csv,`bons_pressoir_${S.annee}.csv`);
 }
-
-window.exportRecap = function() {
-  const d=expl();
-  const pm=poidsReel(state.exploit);
-  let csv='Parcelle;Surface (ha);Objectif caisses;Caisses sorties;Écart;Rdt objectif (kg/ha);Rdt réel (kg/ha)\n';
+window.exportRecap=function(){
+  const d=expl(),pm=poidsReel(S.exploit);
+  let csv='Parcelle;Surface (ha);Objectif;Sorties;Écart;Rdt obj. (kg/ha);Rdt réel (kg/ha)\n';
   d.parcelles.forEach(p=>{
-    const s=totSorties(state.exploit,p.nom);
-    const ec=s-p.obj;
-    const rdtObj=Math.round(p.obj*pm.val/p.surface);
-    const rdtReel=s>0?Math.round(s*pm.val/p.surface):0;
-    csv+=`${p.nom};${p.surface};${p.obj};${s};${ec};${rdtObj};${rdtReel}\n`;
+    const s=totSorties(S.exploit,p.nom),obj=objDynamique(S.exploit,p),ec=s-obj;
+    csv+=`${p.nom};${p.surface};${obj};${s};${ec};${Math.round(obj*pm.val/p.surface)};${s>0?Math.round(s*pm.val/p.surface):0}\n`;
   });
-  downloadCSV(csv,`recap_${state.exploit}_${state.annee}.csv`);
+  dlCSV(csv,`recap_${S.exploit}_${S.annee}.csv`);
+}
+function dlCSV(csv,filename){
+  const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'})),download:filename});
+  a.click(); URL.revokeObjectURL(a.href); showToast('✓ Export téléchargé');
 }
 
-function downloadCSV(csv,filename) {
-  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;a.download=filename;a.click();
-  URL.revokeObjectURL(url);
-  showToast('✓ Export téléchargé');
-}
-
-// ============================================================
-// CONFIG
-// ============================================================
-function renderConfig() {
-  if(!state.campagne) return;
-  const annees=Object.keys(state.campagnes).sort((a,b)=>b-a);
+// ── CONFIG ────────────────────────────────────────────────────
+function renderConfig(){
+  if(!S.campagne) return;
+  const annees=Object.keys(S.campagnes).sort((a,b)=>b-a);
   document.getElementById('config-campagnes').innerHTML=annees.map(a=>{
-    const c=state.campagnes[a];
-    const badge=c.active?'<span class="badge prog">Active</span>':'<span class="badge done">Terminée</span>';
-    return `<div class="camp-item"><div><div style="font-size:14px;font-weight:600;color:var(--text)">Campagne ${a}</div><div style="font-size:11px;color:var(--text2);font-family:'DM Mono',monospace">Rdt ${c.rendement.toLocaleString()} kg/ha · ${c.poidsPrev} kg/caisse</div></div>${badge}</div>`;
+    const c=S.campagnes[a];
+    const deleteBtn=c.active?`<button class="icon-btn danger" style="margin-left:8px" onclick="confirmSupprimerCampagne(${a})" aria-label="Supprimer campagne ${a}"><i class="ti ti-trash" style="font-size:14px"></i></button>`:'';
+    return `<div class="camp-item">
+      <div><div style="font-size:14px;font-weight:600;color:var(--text)">Campagne ${a}</div>
+      <div style="font-size:11px;color:var(--text2);font-family:'DM Mono',monospace">Rdt ${c.rendement.toLocaleString()} kg/ha · ${c.poidsPrev} kg/caisse</div></div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span class="badge ${c.active?'actif':'termine'}">${c.active?'Active':'Terminée'}</span>
+        ${deleteBtn}
+      </div>
+    </div>`;
   }).join('');
   const prochaine=Math.max(...annees.map(Number))+1;
   document.getElementById('btn-new-camp').innerHTML=`<i class="ti ti-plus"></i> Créer la campagne ${prochaine}`;
-  document.getElementById('cfg-annee-lbl').textContent=state.annee;
+  document.getElementById('cfg-annee-lbl').textContent=S.annee;
   document.getElementById('cfg-rdt').value=camp().rendement;
   document.getElementById('cfg-poids').value=camp().poidsPrev;
-  const readonly=!camp().active;
-  document.getElementById('cfg-readonly-alert').style.display=readonly?'block':'none';
-  document.getElementById('cfg-rdt').disabled=readonly;
-  document.getElementById('cfg-poids').disabled=readonly;
-  document.getElementById('cfg-poids-hint').textContent=poidsReel(state.exploit).reel
-    ?'Poids réel disponible — prévisionnel non utilisé.'
-    :'Utilisé tant qu\'aucun bon de pesée n\'est enregistré.';
-  const exploits=camp().exploitations;
-  let simHtml='<div class="sim-result">';
-  Object.values(exploits).forEach(e=>{
-    const surf=e.parcelles.reduce((a,p)=>a+p.surface,0);
-    const kg=Math.round(surf*camp().rendement);
-    const c=Math.round(kg/camp().poidsPrev);
-    simHtml+=`<div class="sim-row"><span class="lbl">${e.nom}</span><span>${surf.toFixed(2)} ha</span></div>`;
-    simHtml+=`<div class="sim-row"><span class="lbl">&nbsp;&nbsp;Poids estimé</span><span>${kg.toLocaleString()} kg</span></div>`;
-    simHtml+=`<div class="sim-row total"><span class="lbl">&nbsp;&nbsp;Objectif caisses</span><span>${c}</span></div>`;
-  });
-  simHtml+='</div>';
-  document.getElementById('cfg-sim').innerHTML=simHtml;
-  document.getElementById('cfg-exploits').innerHTML=Object.entries(exploits).map(([e,d])=>`
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
-      <div><div style="font-size:14px;font-weight:600;color:var(--text)">${d.nom}</div>
-      <div style="font-size:11px;color:var(--text2);font-family:'DM Mono',monospace">${d.parcelles.length} parcelles · ${d.parcelles.reduce((a,p)=>a+p.surface,0).toFixed(2)} ha</div></div>
-      <button class="icon-btn" onclick="gererParcelles('${e}')" aria-label="Gérer ${d.nom}"><i class="ti ti-edit" style="font-size:15px"></i></button>
+  const ro=!camp().active;
+  document.getElementById('cfg-readonly-alert').style.display=ro?'block':'none';
+  document.getElementById('cfg-rdt').disabled=ro;
+  document.getElementById('cfg-poids').disabled=ro;
+  document.getElementById('cfg-poids-hint').textContent=poidsReel(S.exploit).reel?'Poids réel disponible — prévisionnel non utilisé.':'Utilisé tant qu\'aucun bon de pesée n\'est enregistré.';
+
+  // Menu déroulant simulation
+  const exploits=Object.keys(camp().exploitations);
+  document.getElementById('cfg-sim-exploit').innerHTML=exploits.map(e=>`<option value="${e}">${camp().exploitations[e].nom}</option>`).join('');
+  renderSimulation();
+
+  document.getElementById('cfg-exploits').innerHTML=Object.entries(camp().exploitations).map(([e,d])=>`
+    <div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="margin-bottom:8px">
+        <div style="font-size:14px;font-weight:600;color:var(--text)">${d.nom}</div>
+        <div style="font-size:11px;color:var(--text2);font-family:'DM Mono',monospace">${d.parcelles.length} parcelles · ${d.parcelles.reduce((a,p)=>a+p.surface,0).toFixed(2)} ha · ${d.pressoirs.length} pressoirs</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-secondary" style="margin-top:0;flex:1;padding:8px;font-size:12px" onclick="openGererParcelles('${e}')"><i class="ti ti-plant-2" style="font-size:14px"></i> Parcelles</button>
+        <button class="btn btn-secondary" style="margin-top:0;flex:1;padding:8px;font-size:12px" onclick="openGererPressoirs('${e}')"><i class="ti ti-building-factory" style="font-size:14px"></i> Pressoirs</button>
+      </div>
     </div>`).join('');
 }
 
-window.gererParcelles = function(e) {
-  sendPromptToChat(`Je veux gérer les parcelles de ${camp().exploitations[e].nom}`);
+window.renderSimulation=function(){
+  const e=document.getElementById('cfg-sim-exploit')?.value||Object.keys(camp().exploitations)[0];
+  const d=camp().exploitations[e];
+  const pm=poidsReel(e);
+  const surf=d.parcelles.reduce((a,p)=>a+p.surface,0);
+  const kgObj=Math.round(surf*camp().rendement);
+  const caisses=Math.round(kgObj/pm.val);
+  const kgRecolte=Math.round(Object.values(S.remorques).filter(r=>r.exploit===e).reduce((a,r)=>a+r.caisses,0)*pm.val);
+  document.getElementById('cfg-sim').innerHTML=`
+    <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:12px;border:1px solid var(--border);margin-top:4px">
+      <div class="tot-row"><span class="lbl">Surface totale</span><span>${surf.toFixed(2)} ha</span></div>
+      <div class="tot-row"><span class="lbl">Rendement appellation</span><span>${camp().rendement.toLocaleString()} kg/ha</span></div>
+      <div class="tot-row"><span class="lbl">Poids moyen caisse</span><span>${pm.val.toFixed(pm.reel?2:0)} kg ${pm.reel?'<span style="color:var(--accent);font-size:10px">(réel)</span>':'<span style="color:var(--amber);font-size:10px">(prév.)</span>'}</span></div>
+      <div class="divider"></div>
+      <div class="tot-row bold"><span class="lbl">Objectif kg appellation</span><span>${kgObj.toLocaleString()} kg</span></div>
+      <div class="tot-row bold"><span class="lbl">Objectif caisses</span><span>${caisses}</span></div>
+      <div class="divider"></div>
+      <div class="tot-row"><span class="lbl">Déjà récolté</span><span>${kgRecolte.toLocaleString()} kg</span></div>
+      <div class="tot-row"><span class="lbl">Reste à récolter</span><span style="color:${Math.max(0,kgObj-kgRecolte)>0?'var(--amber)':'var(--accent)'}">${Math.max(0,kgObj-kgRecolte).toLocaleString()} kg</span></div>
+    </div>`;
 }
 
-function sendPromptToChat(text) {
-  if(window.sendPrompt) window.sendPrompt(text);
-}
-
-window.saveConfigParams = async function() {
+window.saveConfigParams=async function(){
   if(!camp().active) return;
   camp().rendement=parseInt(document.getElementById('cfg-rdt').value)||9120;
   camp().poidsPrev=parseFloat(document.getElementById('cfg-poids').value)||41;
-  await setDoc(doc(db,'campagnes',String(state.annee)),camp());
-  document.getElementById('cfg-poids-hint').textContent=poidsReel(state.exploit).reel
-    ?'Poids réel disponible.':'Utilisé tant qu\'aucun bon de pesée n\'est enregistré.';
-  renderTableau();
+  await setDoc(doc(db,'campagnes',String(S.annee)),camp());
+  renderTableau(); renderSimulation();
 }
 
-window.nouvelleCampagne = async function() {
-  const prochaine=Math.max(...Object.keys(state.campagnes).map(Number))+1;
-  if(state.campagnes[prochaine]){showToast('Campagne '+prochaine+' déjà créée');return;}
-  // Copier la structure de la campagne précédente
-  const anneeRef=Math.max(...Object.keys(state.campagnes).map(Number));
-  const src=state.campagnes[anneeRef];
-  const newCamp={
-    rendement: src.rendement,
-    poidsPrev: src.poidsPrev,
-    active: true,
-    exploitations: JSON.parse(JSON.stringify(src.exploitations))
-  };
-  // Marquer l'ancienne comme terminée
+window.demanderNouvelleCampagne=function(){
+  const prochaine=Math.max(...Object.keys(S.campagnes).map(Number))+1;
+  if(S.campagnes[prochaine]){showToast('Campagne '+prochaine+' déjà créée');return;}
+  showModal(
+    'Créer la campagne '+prochaine,
+    `La campagne ${prochaine} sera créée en copiant les exploitations, parcelles et pressoirs de ${S.annee}. La campagne ${S.annee} passera au statut "Terminée". Confirmer ?`,
+    'Créer','btn-success',
+    ()=>nouvelleCampagne(prochaine)
+  );
+}
+async function nouvelleCampagne(prochaine){
+  const anneeRef=Math.max(...Object.keys(S.campagnes).map(Number));
+  const src=S.campagnes[anneeRef];
+  const newCamp={rendement:src.rendement,poidsPrev:src.poidsPrev,active:true,exploitations:JSON.parse(JSON.stringify(src.exploitations))};
   src.active=false;
   await setDoc(doc(db,'campagnes',String(anneeRef)),src);
   await setDoc(doc(db,'campagnes',String(prochaine)),newCamp);
-  state.campagnes[prochaine]=newCamp;
-  state.annee=prochaine;
-  state.campagne=newCamp;
-  state.remorques={};
-  state.bons={};
-  buildAnneeSelect();
-  subscribeRemorques();
-  subscribeBons();
-  renderConfig();
-  renderTableau();
+  S.campagnes[prochaine]=newCamp; S.annee=prochaine; S.campagne=newCamp;
+  S.remorques={}; S.bons={};
+  buildAnneeSelect(); subscribeRemorques(); subscribeBons();
+  renderConfig(); renderTableau();
   showToast('✓ Campagne '+prochaine+' créée !');
 }
 
-// ============================================================
-// TOAST
-// ============================================================
-window.showToast = function(msg) {
+window.confirmSupprimerCampagne=function(a){
+  showModal(
+    'Supprimer la campagne '+a,
+    `Supprimer définitivement la campagne ${a} et toutes ses données (remorques, bons) ? Cette action est irréversible.`,
+    'Supprimer','btn-danger',
+    ()=>supprimerCampagne(a)
+  );
+}
+async function supprimerCampagne(a){
+  // Supprimer sous-collections
+  const [remSnap,bonSnap]=await Promise.all([getDocs(collection(db,'campagnes',String(a),'remorques')),getDocs(collection(db,'campagnes',String(a),'bons'))]);
+  await Promise.all([...remSnap.docs.map(d=>deleteDoc(d.ref)),...bonSnap.docs.map(d=>deleteDoc(d.ref))]);
+  await deleteDoc(doc(db,'campagnes',String(a)));
+  delete S.campagnes[a];
+  const annees=Object.keys(S.campagnes).map(Number).sort((a,b)=>b-a);
+  if(annees.length===0){await creerCampagneDefaut(new Date().getFullYear());}
+  const active=annees.find(x=>S.campagnes[x]?.active)||annees[0];
+  S.annee=active; S.campagne=S.campagnes[active];
+  S.exploit=Object.keys(S.campagne.exploitations)[0];
+  S.remorques={}; S.bons={};
+  buildAnneeSelect(); subscribeRemorques(); subscribeBons();
+  renderConfig(); renderTableau();
+  showToast('Campagne '+a+' supprimée');
+}
+
+// ── GESTION PARCELLES ─────────────────────────────────────────
+window.openGererParcelles=function(e){
+  S.subExploit=e; S.editParcIdx=-1; manualParcObj=false;
+  const d=camp().exploitations[e];
+  document.getElementById('sub-parc-title').textContent='Parcelles — '+d.nom;
+  resetParcForm(); renderParcList(); renderParcSummary();
+  openSubscreen('sub-parcelles');
+}
+function renderParcSummary(){
+  const d=camp().exploitations[S.subExploit];
+  const surf=d.parcelles.reduce((a,p)=>a+p.surface,0);
+  const pm=poidsReel(S.subExploit);
+  const totObj=d.parcelles.reduce((a,p)=>a+Math.round(p.surface*camp().rendement/pm.val),0);
+  const rdtMoy=surf>0?Math.round(totObj*pm.val/surf):0;
+  document.getElementById('parc-summary').innerHTML=`
+    <div class="sum-stat"><div class="sum-label">Surface totale</div><div class="sum-val">${surf.toFixed(2)} ha</div></div>
+    <div class="sum-stat"><div class="sum-label">Objectif total</div><div class="sum-val">${totObj} caisses</div></div>
+    <div class="sum-stat"><div class="sum-label">Poids estimé</div><div class="sum-val">${(totObj*pm.val/1000).toFixed(1)} t</div></div>
+    <div class="sum-stat"><div class="sum-label">Rdt moyen obj.</div><div class="sum-val">${rdtMoy.toLocaleString()} kg/ha</div></div>`;
+  document.getElementById('sub-parc-sub').textContent=d.parcelles.length+' parcelles · '+surf.toFixed(2)+' ha';
+}
+function renderParcList(){
+  const d=camp().exploitations[S.subExploit];
+  const pm=poidsReel(S.subExploit);
+  document.getElementById('parc-list').innerHTML=!d.parcelles.length
+    ?'<div style="padding:12px;text-align:center;font-size:13px;color:var(--text3)">Aucune parcelle.</div>'
+    :d.parcelles.map((p,i)=>{
+      const obj=Math.round(p.surface*camp().rendement/pm.val);
+      const rdt=Math.round(obj*pm.val/p.surface);
+      return `<div class="parc-row">
+        <div class="parc-info"><div class="parc-nom">${p.nom}</div>
+        <div class="parc-detail">${p.surface.toFixed(2)} ha · obj. ${obj} caisses · ${rdt.toLocaleString()} kg/ha</div></div>
+        <button class="icon-btn" onclick="editParc(${i})"><i class="ti ti-edit" style="font-size:15px"></i></button>
+        <button class="icon-btn danger" onclick="confirmDeleteParc(${i})"><i class="ti ti-trash" style="font-size:15px"></i></button>
+      </div>`;
+    }).join('');
+}
+window.calcParcObj=function(){
+  if(manualParcObj) return;
+  const surf=parseFloat(document.getElementById('parc-surface').value);
+  if(!surf||surf<=0){document.getElementById('parc-calc-hint').textContent='';document.getElementById('parc-obj').value='';return;}
+  const pm=poidsReel(S.subExploit);
+  const c=Math.round(surf*camp().rendement/pm.val);
+  document.getElementById('parc-obj').value=c;
+  document.getElementById('parc-calc-hint').textContent=`→ ${(surf*camp().rendement).toLocaleString()} kg ÷ ${pm.val.toFixed(1)} kg/caisse = ${c} caisses`;
+}
+window.editParc=function(i){
+  S.editParcIdx=i; manualParcObj=false;
+  const p=camp().exploitations[S.subExploit].parcelles[i];
+  const pm=poidsReel(S.subExploit);
+  document.getElementById('parc-nom').value=p.nom;
+  document.getElementById('parc-surface').value=p.surface;
+  document.getElementById('parc-obj').value=Math.round(p.surface*camp().rendement/pm.val);
+  document.getElementById('parc-calc-hint').textContent=`Rdt objectif : ${Math.round(p.surface*camp().rendement/p.surface).toLocaleString()} kg/ha`;
+  document.getElementById('parc-form-title').textContent='Modifier — '+p.nom;
+  document.getElementById('btn-parc-save').innerHTML='<i class="ti ti-check"></i> Enregistrer les modifications';
+  document.getElementById('btn-parc-cancel').style.display='block';
+  document.getElementById('parc-form-card').scrollIntoView({behavior:'smooth'});
+}
+window.confirmDeleteParc=function(i){
+  const nom=camp().exploitations[S.subExploit].parcelles[i].nom;
+  showModal('Supprimer la parcelle',`Supprimer "${nom}" ? Les remorques déjà enregistrées sur cette parcelle sont conservées dans l'historique.`,'Supprimer','btn-danger',()=>deleteParc(i));
+}
+async function deleteParc(i){
+  const nom=camp().exploitations[S.subExploit].parcelles[i].nom;
+  camp().exploitations[S.subExploit].parcelles.splice(i,1);
+  await setDoc(doc(db,'campagnes',String(S.annee)),camp());
+  if(S.editParcIdx===i) resetParcForm();
+  renderParcList(); renderParcSummary(); showToast('"'+nom+'" supprimée');
+}
+window.saveParc=async function(){
+  const nom=document.getElementById('parc-nom').value.trim();
+  const surface=parseFloat(document.getElementById('parc-surface').value);
+  const obj=parseInt(document.getElementById('parc-obj').value);
+  if(!nom){showToast('Saisis un nom de parcelle');return;}
+  if(!surface||surface<=0){showToast('Surface invalide');return;}
+  if(!obj||obj<=0){showToast('Objectif invalide');return;}
+  const parcs=camp().exploitations[S.subExploit].parcelles;
+  if(S.editParcIdx>=0){
+    parcs[S.editParcIdx]={nom,surface,obj};
+    showToast('"'+nom+'" modifiée');
+  } else {
+    if(parcs.find(p=>p.nom.toLowerCase()===nom.toLowerCase())){showToast('Ce nom existe déjà');return;}
+    parcs.push({nom,surface,obj});
+    showToast('"'+nom+'" ajoutée');
+  }
+  await setDoc(doc(db,'campagnes',String(S.annee)),camp());
+  resetParcForm(); renderParcList(); renderParcSummary();
+}
+window.resetParcForm=function(){
+  S.editParcIdx=-1; manualParcObj=false;
+  ['parc-nom','parc-surface','parc-obj'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('parc-calc-hint').textContent='';
+  document.getElementById('parc-form-title').textContent='Ajouter une parcelle';
+  document.getElementById('btn-parc-save').innerHTML='<i class="ti ti-check"></i> Enregistrer';
+  document.getElementById('btn-parc-cancel').style.display='none';
+}
+
+// ── GESTION PRESSOIRS ─────────────────────────────────────────
+window.openGererPressoirs=function(e){
+  S.subExploit=e;
+  const d=camp().exploitations[e];
+  document.getElementById('sub-press-title').textContent='Pressoirs — '+d.nom;
+  document.getElementById('pressoir-nom').value='';
+  renderPressoirList();
+  openSubscreen('sub-pressoirs');
+}
+function renderPressoirList(){
+  const d=camp().exploitations[S.subExploit];
+  document.getElementById('sub-press-sub').textContent=d.pressoirs.length+' pressoir(s) actif(s)';
+  document.getElementById('pressoir-list').innerHTML=!d.pressoirs.length
+    ?'<div style="padding:12px;text-align:center;font-size:13px;color:var(--text3)">Aucun pressoir.</div>'
+    :d.pressoirs.map((p,i)=>`
+      <div class="parc-row">
+        <div class="parc-info"><div class="parc-nom">${p}</div></div>
+        <button class="icon-btn danger" onclick="confirmDeletePressoir(${i},'${p}')"><i class="ti ti-trash" style="font-size:15px"></i></button>
+      </div>`).join('');
+}
+window.savePressoir=async function(){
+  const nom=document.getElementById('pressoir-nom').value.trim().toUpperCase();
+  if(!nom){showToast('Saisis un nom de pressoir');return;}
+  const pressoirs=camp().exploitations[S.subExploit].pressoirs;
+  if(pressoirs.find(p=>p.toUpperCase()===nom)){showToast('Ce pressoir existe déjà');return;}
+  pressoirs.push(nom);
+  await setDoc(doc(db,'campagnes',String(S.annee)),camp());
+  document.getElementById('pressoir-nom').value='';
+  renderPressoirList(); showToast('"'+nom+'" ajouté');
+}
+window.confirmDeletePressoir=function(i,nom){
+  showModal('Supprimer le pressoir',`Supprimer "${nom}" de la liste ? Les bons déjà enregistrés avec ce pressoir sont conservés.`,'Supprimer','btn-danger',()=>deletePressoir(i,nom));
+}
+async function deletePressoir(i,nom){
+  camp().exploitations[S.subExploit].pressoirs.splice(i,1);
+  await setDoc(doc(db,'campagnes',String(S.annee)),camp());
+  renderPressoirList(); showToast('"'+nom+'" supprimé — historique préservé');
+}
+
+// ── TOAST ─────────────────────────────────────────────────────
+window.showToast=function(msg){
   const t=document.getElementById('toast');
-  t.textContent=msg;
-  t.classList.add('show');
+  t.textContent=msg; t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),2500);
 }
 
-// DÉMARRAGE
 init();
 </script>
 </body>
