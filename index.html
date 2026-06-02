@@ -112,6 +112,15 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
 .export-row{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
 .export-btn{flex:1;min-width:120px;padding:8px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--bg2);font-size:12px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text);display:flex;align-items:center;justify-content:center;gap:5px;transition:all 0.15s}
 .export-btn:hover{background:var(--bg3);border-color:var(--accent)}
+.accord-header{display:flex;align-items:center;justify-content:space-between;padding:10px 0;cursor:pointer;border-bottom:1px solid var(--border);user-select:none}
+.accord-header:last-of-type{border-bottom:none}
+.accord-title{font-size:14px;font-weight:600;color:var(--text)}
+.accord-sub{font-size:11px;color:var(--text2);font-family:'DM Mono',monospace;margin-top:2px}
+.accord-body{overflow:hidden;transition:max-height 0.3s ease,opacity 0.2s;max-height:0;opacity:0}
+.accord-body.open{max-height:400px;opacity:1}
+.accord-chevron{font-size:16px;color:var(--text3);transition:transform 0.25s;flex-shrink:0}
+.accord-chevron.open{transform:rotate(180deg)}
+.etab-scroll{flex-shrink:0}
 .loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;gap:12px;color:var(--text2);font-size:13px}
 .spinner{width:28px;height:28px;border:2px solid var(--bg3);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -225,7 +234,7 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
     <div class="screen" id="screen-histo">
       <div class="card" style="margin-top:4px">
         <div class="card-title">Comparaison — <span id="histo-exploit-label" style="color:var(--accent)"></span></div>
-        <div class="etabs" id="etabs-histo"></div>
+        <div id="etabs-histo" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px;scrollbar-width:none;-webkit-overflow-scrolling:touch"></div>
         <div id="histo-stats"></div>
       </div>
       <div class="card"><div class="card-title">Appellation kg/ha par parcelle</div><div id="histo-chart"></div></div>
@@ -747,7 +756,7 @@ async function renderHisto(){
   const annees=Object.keys(S.campagnes).sort((a,b)=>b-a);
   if(!S.histoAnnee) S.histoAnnee=annees[0];
   document.getElementById('etabs-histo').innerHTML=annees.map((a,i)=>
-    `<button class="etab ${a==S.histoAnnee?'active':''}" onclick="setHistoAnnee(${a},this)">${a}</button>`
+    `<button class="etab etab-scroll ${a==S.histoAnnee?'active':''}" onclick="setHistoAnnee(${a},this)">${a}</button>`
   ).join('');
   await renderHistoContent(S.histoAnnee);
   renderExport();
@@ -836,13 +845,24 @@ function renderConfig(){
   const annees=Object.keys(S.campagnes).sort((a,b)=>b-a);
   document.getElementById('config-campagnes').innerHTML=annees.map(a=>{
     const c=S.campagnes[a];
-    const delBtn=c.active?`<button class="icon-btn danger" style="margin-left:8px" onclick="confirmSupprimerCampagne(${a})" aria-label="Supprimer ${a}"><i class="ti ti-trash" style="font-size:14px"></i></button>`:'';
-    return `<div class="camp-item">
-      <div><div style="font-size:14px;font-weight:600;color:var(--text)">Campagne ${a}</div>
-      <div style="font-size:11px;color:var(--text2);font-family:'DM Mono',monospace">${Object.values(c.exploitations).map(e=>`${e.nom} : ${e.rendement||c.rendement} kg/ha · ${e.poidsPrev||c.poidsPrev} kg/caisse`).join(' — ')}</div></div>
-      <div style="display:flex;align-items:center;gap:6px">
-        <span class="badge ${c.active?'actif':'termine'}">${c.active?'Active':'Terminée'}</span>${delBtn}
-      </div></div>`;
+    const isOpen=c.active;
+    const delBtn=c.active?`<button class="icon-btn danger" onclick="event.stopPropagation();confirmSupprimerCampagne(${a})" aria-label="Supprimer ${a}"><i class="ti ti-trash" style="font-size:14px"></i></button>`:'';
+    const details=Object.values(c.exploitations).map(e=>`${e.nom} : ${e.rendement||c.rendement} kg/ha · ${e.poidsPrev||c.poidsPrev} kg/caisse`).join('<br>');
+    return `<div>
+      <div class="accord-header" onclick="toggleAccord('accord-${a}')">
+        <div>
+          <div class="accord-title">Campagne ${a} <span class="badge ${c.active?'actif':'termine'}" style="margin-left:6px">${c.active?'Active':'Terminée'}</span></div>
+          <div class="accord-sub">${Object.keys(c.exploitations).length} exploitations</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          ${delBtn}
+          <i class="ti ti-chevron-down accord-chevron ${isOpen?'open':''}" id="chevron-${a}"></i>
+        </div>
+      </div>
+      <div class="accord-body ${isOpen?'open':''}" id="accord-${a}">
+        <div style="padding:10px 0 6px;font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;line-height:1.8">${details}</div>
+      </div>
+    </div>`;
   }).join('');
   const prochaine=Math.max(...annees.map(Number))+1;
   document.getElementById('btn-new-camp').innerHTML=`<i class="ti ti-plus"></i> Créer la campagne ${prochaine}`;
@@ -866,6 +886,15 @@ function renderConfig(){
         <button class="btn btn-secondary" style="margin-top:0;flex:1;min-width:80px;padding:8px;font-size:12px" onclick="openGererParams('${e}')"><i class="ti ti-adjustments" style="font-size:14px"></i> Paramètres</button>
       </div>
     </div>`).join('');
+}
+
+window.toggleAccord=function(id){
+  const body=document.getElementById(id);
+  const annee=id.replace('accord-','');
+  const chevron=document.getElementById('chevron-'+annee);
+  const isOpen=body.classList.contains('open');
+  body.classList.toggle('open',!isOpen);
+  if(chevron) chevron.classList.toggle('open',!isOpen);
 }
 
 window.renderSimulation=function(){
