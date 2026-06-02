@@ -238,6 +238,7 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
         <div id="histo-stats"></div>
       </div>
       <div class="card"><div class="card-title">Appellation kg/ha par parcelle</div><div id="histo-chart"></div></div>
+      <div class="card"><div class="card-title">Commentaires — <span id="histo-comment-exploit" style="color:var(--accent)"></span></div><div id="histo-comments"></div></div>
       <div class="card"><div class="card-title">Export des données</div><div id="export-section"></div></div>
     </div>
 
@@ -339,6 +340,34 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
       <div class="card-title">Simulation objectifs</div>
       <div id="params-sim"></div>
     </div>
+  </div>
+</div>
+
+<!-- SOUS-ÉCRAN COMMENTAIRES -->
+<div class="subscreen" id="sub-commentaires">
+  <div class="subscreen-topbar">
+    <button class="back-btn" onclick="closeSubscreen('sub-commentaires')"><i class="ti ti-arrow-left"></i> Config</button>
+    <div><div class="subscreen-title" id="sub-comment-title">Commentaires</div><div class="subscreen-sub" id="sub-comment-sub"></div></div>
+  </div>
+  <div class="subscreen-body">
+    <div class="alert info" style="margin-bottom:10px"><i class="ti ti-info-circle"></i> Ces commentaires seront visibles dans l'onglet Historique.</div>
+    <div class="card">
+      <div class="card-title">Météo</div>
+      <textarea id="comment-meteo" rows="3" placeholder="Ex : Été chaud et sec, quelques orages en août..." style="width:100%;padding:9px 11px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);resize:vertical" oninput="saveComment()"></textarea>
+    </div>
+    <div class="card">
+      <div class="card-title">Qualité</div>
+      <textarea id="comment-qualite" rows="3" placeholder="Ex : Très belle maturité, bon équilibre sucre/acidité..." style="width:100%;padding:9px 11px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);resize:vertical" oninput="saveComment()"></textarea>
+    </div>
+    <div class="card">
+      <div class="card-title">Incidents</div>
+      <textarea id="comment-incidents" rows="3" placeholder="Ex : Mildiou sur Les Sablons, remorque en panne le 18/09..." style="width:100%;padding:9px 11px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);resize:vertical" oninput="saveComment()"></textarea>
+    </div>
+    <div class="card">
+      <div class="card-title">Observations</div>
+      <textarea id="comment-observations" rows="4" placeholder="Ex : Rendement en hausse sur Les Chalmonts, à surveiller..." style="width:100%;padding:9px 11px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);resize:vertical" oninput="saveComment()"></textarea>
+    </div>
+    <div class="hint" id="comment-save-hint" style="text-align:center;padding:4px"></div>
   </div>
 </div>
 
@@ -760,6 +789,7 @@ window.cancelBon=function(){
 // ── HISTORIQUE ────────────────────────────────────────────────
 async function renderHisto(){
   document.getElementById('histo-exploit-label').textContent=expl().nom;
+  document.getElementById('histo-comment-exploit').textContent=expl().nom;
   const annees=Object.keys(S.campagnes).sort((a,b)=>b-a);
   if(!S.histoAnnee) S.histoAnnee=annees[0];
   document.getElementById('etabs-histo').innerHTML=annees.map((a,i)=>
@@ -802,6 +832,18 @@ async function renderHistoContent(a){
     const s=rems.filter(r=>r.exploit===e&&r.parcelle===p.nom).reduce((a,r)=>a+r.caisses,0);
     return s>0?Math.round(s*pm/p.surface):0;
   }),1);
+  // Commentaires
+  const comm=d.commentaires||{};
+  const etiquettes=[['meteo','🌤 Météo'],['qualite','🍇 Qualité'],['incidents','⚠️ Incidents'],['observations','📝 Observations']];
+  const commHtml=etiquettes.filter(([k])=>comm[k]&&comm[k].trim()).map(([k,label])=>`
+    <div style="margin-bottom:10px">
+      <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;font-family:'DM Mono',monospace;margin-bottom:4px">${label}</div>
+      <div style="font-size:13px;color:var(--text);line-height:1.6;white-space:pre-wrap">${comm[k]}</div>
+    </div>`).join('');
+  document.getElementById('histo-comments').innerHTML=commHtml
+    ? `<div>${commHtml}</div>`
+    : '<div style="font-size:13px;color:var(--text3);padding:4px">Aucun commentaire enregistré pour cette exploitation.</div>';
+
   document.getElementById('histo-chart').innerHTML=d.parcelles.map(p=>{
     const s=rems.filter(r=>r.exploit===e&&r.parcelle===p.nom).reduce((a,r)=>a+r.caisses,0);
     const rdtP=s>0?Math.round(s*pm/p.surface):0;
@@ -877,6 +919,7 @@ function renderConfig(){
         <button class="btn btn-secondary" style="margin-top:0;flex:1;min-width:80px;padding:8px;font-size:12px" onclick="openGererParcelles('${e}')"><i class="ti ti-plant-2" style="font-size:14px"></i> Parcelles</button>
         <button class="btn btn-secondary" style="margin-top:0;flex:1;min-width:80px;padding:8px;font-size:12px" onclick="openGererPressoirs('${e}')"><i class="ti ti-building-factory" style="font-size:14px"></i> Pressoirs</button>
         <button class="btn btn-secondary" style="margin-top:0;flex:1;min-width:80px;padding:8px;font-size:12px" onclick="openGererParams('${e}')"><i class="ti ti-adjustments" style="font-size:14px"></i> Paramètres</button>
+        <button class="btn btn-secondary" style="margin-top:0;flex:1;min-width:80px;padding:8px;font-size:12px" onclick="openCommentaires('${e}')"><i class="ti ti-message" style="font-size:14px"></i> Commentaires</button>
       </div>
     </div>`).join('');
 }
@@ -1125,6 +1168,37 @@ window.resetParcForm=function(){
 }
 
 // ── GESTION PRESSOIRS ─────────────────────────────────────────
+window.openCommentaires=function(e){
+  S.subExploit=e;
+  const d=camp().exploitations[e];
+  document.getElementById('sub-comment-title').textContent='Commentaires — '+d.nom;
+  document.getElementById('sub-comment-sub').textContent='Campagne '+S.annee;
+  const comm=d.commentaires||{};
+  document.getElementById('comment-meteo').value=comm.meteo||'';
+  document.getElementById('comment-qualite').value=comm.qualite||'';
+  document.getElementById('comment-incidents').value=comm.incidents||'';
+  document.getElementById('comment-observations').value=comm.observations||'';
+  document.getElementById('comment-save-hint').textContent='';
+  openSubscreen('sub-commentaires');
+}
+
+let saveCommentTimer=null;
+window.saveComment=function(){
+  clearTimeout(saveCommentTimer);
+  document.getElementById('comment-save-hint').textContent='Enregistrement...';
+  saveCommentTimer=setTimeout(async()=>{
+    const e=S.subExploit;
+    if(!camp().exploitations[e].commentaires) camp().exploitations[e].commentaires={};
+    camp().exploitations[e].commentaires.meteo=document.getElementById('comment-meteo').value;
+    camp().exploitations[e].commentaires.qualite=document.getElementById('comment-qualite').value;
+    camp().exploitations[e].commentaires.incidents=document.getElementById('comment-incidents').value;
+    camp().exploitations[e].commentaires.observations=document.getElementById('comment-observations').value;
+    await setDoc(doc(db,'campagnes',String(S.annee)),camp());
+    document.getElementById('comment-save-hint').textContent='✓ Enregistré';
+    setTimeout(()=>document.getElementById('comment-save-hint').textContent='',2000);
+  },800);
+}
+
 window.openGererPressoirs=function(e){
   S.subExploit=e;
   document.getElementById('sub-press-title').textContent='Pressoirs — '+camp().exploitations[e].nom;
