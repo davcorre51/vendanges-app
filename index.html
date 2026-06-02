@@ -228,7 +228,7 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
         <div class="etabs" id="etabs-histo"></div>
         <div id="histo-stats"></div>
       </div>
-      <div class="card"><div class="card-title">Rendement kg/ha par parcelle</div><div id="histo-chart"></div></div>
+      <div class="card"><div class="card-title">Appellation kg/ha par parcelle</div><div id="histo-chart"></div></div>
       <div class="card"><div class="card-title">Export des données</div><div id="export-section"></div></div>
     </div>
 
@@ -309,7 +309,7 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
       <div class="card-title">Paramètres de l'exploitation</div>
       <div class="alert info" id="params-readonly-alert" style="display:none"><i class="ti ti-lock"></i> Campagne terminée — lecture seule.</div>
       <div class="form-group">
-        <label class="form-label">Rendement appellation (kg/ha)</label>
+        <label class="form-label">Appellation (kg/ha)</label>
         <input type="number" id="params-rdt" oninput="saveExploitParams()">
         <div class="hint">Spécifique à cette exploitation pour cette campagne</div>
       </div>
@@ -540,7 +540,7 @@ function renderTableau(){
   document.getElementById('stats-row').innerHTML=`
     <div class="stat"><div class="stat-label">Caisses sorties</div><div class="stat-val">${totS}</div><div class="stat-sub">obj. ${totO} caisses</div></div>
     <div class="stat"><div class="stat-label">Restant</div><div class="stat-val amber">${restant}</div><div class="stat-sub">caisses</div></div>
-    <div class="stat"><div class="stat-label">Objectif appellation</div><div class="stat-val blue">${totKgObj.toLocaleString()}</div><div class="stat-sub">kg</div></div>
+    <div class="stat"><div class="stat-label">Objectif quantité</div><div class="stat-val blue">${totKgObj.toLocaleString()}</div><div class="stat-sub">kg</div></div>
     <div class="stat"><div class="stat-label">Récolté</div><div class="stat-val green">${totKgRecolte.toLocaleString()}</div><div class="stat-sub">kg</div></div>`;
 
   document.getElementById('prog-pct-lbl').textContent=pct+'%';
@@ -777,10 +777,10 @@ async function renderHistoContent(a){
   const rdtHa=surf>0&&totS>0?Math.round(totS*pm/surf):0;
   document.getElementById('histo-stats').innerHTML=`
     <div class="stat-row">
-      <div class="stat"><div class="stat-label">Caisses récoltées</div><div class="stat-val">${totS}</div></div>
-      <div class="stat"><div class="stat-label">Objectif</div><div class="stat-val">${totO}</div></div>
-      <div class="stat"><div class="stat-label">Poids total</div><div class="stat-val blue">${fmtKg(totP)}</div></div>
-      <div class="stat"><div class="stat-label">Rdt réel kg/ha</div><div class="stat-val green">${rdtHa>0?rdtHa.toLocaleString():'—'}</div></div>
+      <div class="stat"><div class="stat-label">Appellation</div><div class="stat-val blue">${rdt.toLocaleString()}</div><div class="stat-sub">kg/ha</div></div>
+      <div class="stat"><div class="stat-label">Caisses récoltées</div><div class="stat-val">${totS}</div><div class="stat-sub">obj. ${totO}</div></div>
+      <div class="stat"><div class="stat-label">Poids total</div><div class="stat-val">${fmtKg(totP)}</div><div class="stat-sub">${totC} caisses pesées</div></div>
+      <div class="stat"><div class="stat-label">Rdt réel kg/ha</div><div class="stat-val green">${rdtHa>0?rdtHa.toLocaleString():'—'}</div><div class="stat-sub">${pm.toFixed(2)} kg/caisse</div></div>
     </div>`;
   const maxRdt=Math.max(...d.parcelles.map(p=>{
     const s=rems.filter(r=>r.exploit===e&&r.parcelle===p.nom).reduce((a,r)=>a+r.caisses,0);
@@ -880,10 +880,10 @@ window.renderSimulation=function(){
   document.getElementById('cfg-sim').innerHTML=`
     <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:12px;border:1px solid var(--border);margin-top:4px">
       <div class="tot-row"><span class="lbl">Surface totale</span><span>${surf.toFixed(2)} ha</span></div>
-      <div class="tot-row"><span class="lbl">Rendement</span><span>${rdt.toLocaleString()} kg/ha</span></div>
+      <div class="tot-row"><span class="lbl">Appellation</span><span>${rdt.toLocaleString()} kg/ha</span></div>
       <div class="tot-row"><span class="lbl">Poids moyen caisse</span><span>${pm.val.toFixed(pm.reel?2:0)} kg <span style="font-size:10px;color:${pm.reel?'var(--accent)':'var(--amber)'}">${pm.reel?'(réel)':'(prév.)'}</span></span></div>
       <div class="divider"></div>
-      <div class="tot-row bold"><span class="lbl">Objectif appellation</span><span>${fmtKg(kgObj)}</span></div>
+      <div class="tot-row bold"><span class="lbl">Objectif quantité</span><span>${fmtKg(kgObj)}</span></div>
       <div class="tot-row bold"><span class="lbl">Objectif caisses</span><span>${caisses}</span></div>
       <div class="divider"></div>
       <div class="tot-row"><span class="lbl">Déjà récolté</span><span>${fmtKg(kgRecolte)}</span></div>
@@ -962,10 +962,10 @@ function renderParamsSim(e){
   document.getElementById('params-sim').innerHTML=`
     <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:12px;border:1px solid var(--border)">
       <div class="tot-row"><span class="lbl">Surface totale</span><span>${surf.toFixed(2)} ha</span></div>
-      <div class="tot-row"><span class="lbl">Rendement</span><span>${rdt.toLocaleString()} kg/ha</span></div>
+      <div class="tot-row"><span class="lbl">Appellation</span><span>${rdt.toLocaleString()} kg/ha</span></div>
       <div class="tot-row"><span class="lbl">Poids caisse</span><span>${pm.val.toFixed(pm.reel?2:0)} kg <span style="font-size:10px;color:${pm.reel?'var(--accent)':'var(--amber)'}">${pm.reel?'(réel)':'(prév.)'}</span></span></div>
       <div class="divider"></div>
-      <div class="tot-row bold"><span class="lbl">Objectif appellation</span><span>${fmtKg(kgObj)}</span></div>
+      <div class="tot-row bold"><span class="lbl">Objectif quantité</span><span>${fmtKg(kgObj)}</span></div>
       <div class="tot-row bold"><span class="lbl">Objectif caisses</span><span>${caisses}</span></div>
     </div>`;
 }
@@ -999,7 +999,7 @@ function renderParcSummary(){
     <div class="sum-stat"><div class="sum-label">Surface totale</div><div class="sum-val">${surf.toFixed(2)} ha</div></div>
     <div class="sum-stat"><div class="sum-label">Objectif total</div><div class="sum-val">${totObj} caisses</div></div>
     <div class="sum-stat"><div class="sum-label">Poids estimé</div><div class="sum-val">${fmtKg(totObj*pm.val)}</div></div>
-    <div class="sum-stat"><div class="sum-label">Rendement</div><div class="sum-val">${rdtMoy.toLocaleString()} kg/ha</div></div>`;
+    <div class="sum-stat"><div class="sum-label">Appellation</div><div class="sum-val">${rdtMoy.toLocaleString()} kg/ha</div></div>`;
   document.getElementById('sub-parc-sub').textContent=d.parcelles.length+' parcelles · '+surf.toFixed(2)+' ha';
 }
 function renderParcList(){
