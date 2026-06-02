@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Import Vendanges 2022</title>
+<style>
+body{font-family:sans-serif;max-width:500px;margin:40px auto;padding:20px;background:#f5f3ee;color:#1c1917}
+h1{font-size:20px;margin-bottom:6px;color:#2d5a27}
+p{font-size:13px;color:#6b6560;margin-bottom:20px}
+.btn{width:100%;padding:14px;background:#2d5a27;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:10px}
+.btn:disabled{background:#9c9590;cursor:not-allowed}
+.btn-danger{background:#991b1b}
+.log{background:#fff;border:1px solid #e3dfd6;border-radius:10px;padding:14px;font-size:12px;font-family:monospace;min-height:120px;max-height:300px;overflow-y:auto;white-space:pre-wrap;margin-top:10px}
+.ok{color:#2d5a27}.err{color:#991b1b}.info{color:#1e3a5f}
+.warn{background:#fef3c7;border:1px solid #92400e;border-radius:8px;padding:10px;font-size:12px;color:#92400e;margin-bottom:16px}
+</style>
+</head>
+<body>
+<h1>🍇 Import Vendanges 2022</h1>
+<p>Cet outil va créer la campagne 2022 dans Firebase avec toutes les données extraites de ton fichier Excel.</p>
+
+<div class="warn">⚠️ Si une campagne 2022 existe déjà, elle sera <strong>écrasée</strong>. Utilise le bouton "Supprimer 2022" d'abord si nécessaire.</div>
+
+<button class="btn" onclick="lancerImport()">🚀 Importer les données 2022</button>
+<button class="btn btn-danger" onclick="supprimerCampagne()">🗑 Supprimer la campagne 2022</button>
+
+<div class="log" id="log">En attente...</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, doc, setDoc, addDoc, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyD0YXEmLDHiQ9GeXPMIenzaLec26JwCb2g",
+  authDomain: "vendanges-127c9.firebaseapp.com",
+  projectId: "vendanges-127c9",
+  storageBucket: "vendanges-127c9.firebasestorage.app",
+  messagingSenderId: "527184043986",
+  appId: "1:527184043986:web:faba4a97e38c30ff0ab20b"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+
+function log(msg, type='info'){
+  const el=document.getElementById('log');
+  const cls=type==='ok'?'ok':type==='err'?'err':'info';
+  el.innerHTML+=`<span class="${cls}">${msg}</span>\n`;
+  el.scrollTop=el.scrollHeight;
+}
+
+// ── DONNÉES 2022 extraites du fichier Excel ──────────────────
+
+const campagne2022 = {
+  rendement: 12000,
+  poidsPrev: 44.87,
+  active: false,
+  exploitations: {
+    CV: {
+      nom: "CORRE-VADEZ",
+      rendement: 12000,
+      poidsPrev: 44.87,
+      pressoirs: ["CORRE Christine","VADEZ David"],
+      parcelles: [
+        {nom:"Les Fosses Blancs", surface:0.42, obj:112},
+        {nom:"Les 13 ares",       surface:0.13, obj:35},
+        {nom:"Les Cordons",       surface:0.38, obj:102},
+        {nom:"Les Sablons",       surface:0.80, obj:214},
+        {nom:"Les Chalmonts",     surface:0.60, obj:160},
+        {nom:"Fontaine Denis",    surface:0.31, obj:83},
+        {nom:"Les Petites",       surface:0.28, obj:75},
+      ]
+    },
+    F: {
+      nom: "FIEVET",
+      rendement: 12000,
+      poidsPrev: 44,
+      pressoirs: ["FIEVET Sylvie"],
+      parcelles: [
+        {nom:"Les Paradis Blancs", surface:0.20, obj:55},
+        {nom:"Les Trouots Noirs",  surface:0.13, obj:35},
+      ]
+    }
+  }
+};
+
+// Remorques CORRE-VADEZ 2022
+// Les remorques sont reconstituées depuis les totaux par parcelle
+// (le fichier ne détaille pas l'heure — on met une date représentative)
+const remorquesCV = [
+  // Les Fosses Blancs : total 136 (96 + 16 + 24)
+  {exploit:"CV", parcelle:"Les Fosses Blancs", caisses:96,  dt:"2022-09-13T08:00"},
+  {exploit:"CV", parcelle:"Les Fosses Blancs", caisses:16,  dt:"2022-09-13T14:00"},
+  {exploit:"CV", parcelle:"Les Fosses Blancs", caisses:24,  dt:"2022-09-14T08:00"},
+  // Les Sablons : total 352 (48+16+112+112+64)
+  {exploit:"CV", parcelle:"Les Sablons", caisses:48,  dt:"2022-09-12T08:00"},
+  {exploit:"CV", parcelle:"Les Sablons", caisses:16,  dt:"2022-09-12T14:00"},
+  {exploit:"CV", parcelle:"Les Sablons", caisses:112, dt:"2022-09-13T08:00"},
+  {exploit:"CV", parcelle:"Les Sablons", caisses:112, dt:"2022-09-13T14:00"},
+  {exploit:"CV", parcelle:"Les Sablons", caisses:64,  dt:"2022-09-14T08:00"},
+  // Les Chalmonts : total 318 (64+64+48+112+30)
+  {exploit:"CV", parcelle:"Les Chalmonts", caisses:64,  dt:"2022-09-12T09:00"},
+  {exploit:"CV", parcelle:"Les Chalmonts", caisses:64,  dt:"2022-09-12T15:00"},
+  {exploit:"CV", parcelle:"Les Chalmonts", caisses:48,  dt:"2022-09-13T09:00"},
+  {exploit:"CV", parcelle:"Les Chalmonts", caisses:112, dt:"2022-09-13T15:00"},
+  {exploit:"CV", parcelle:"Les Chalmonts", caisses:30,  dt:"2022-09-14T09:00"},
+  // Fontaine Denis : total 126 (112+14)
+  {exploit:"CV", parcelle:"Fontaine Denis", caisses:112, dt:"2022-09-15T08:00"},
+  {exploit:"CV", parcelle:"Fontaine Denis", caisses:14,  dt:"2022-09-15T14:00"},
+];
+
+// Remorques FIEVET 2022
+const remorquesF = [
+  // Les Paradis Blancs : total 76 (34+16+26)
+  {exploit:"F", parcelle:"Les Paradis Blancs", caisses:34, dt:"2022-09-13T10:00"},
+  {exploit:"F", parcelle:"Les Paradis Blancs", caisses:16, dt:"2022-09-13T16:00"},
+  {exploit:"F", parcelle:"Les Paradis Blancs", caisses:26, dt:"2022-09-14T10:00"},
+  // Les Trouots Noirs : total 18
+  {exploit:"F", parcelle:"Les Trouots Noirs", caisses:18, dt:"2022-09-14T14:00"},
+];
+
+// Bons pressoir CORRE-VADEZ 2022
+const bonsCV = [
+  {exploit:"CV", date:"2022-09-12", pressoir:"CORRE Christine", bon:"B65",  caisses:126, poids:5557},
+  {exploit:"CV", date:"2022-09-12", pressoir:"CORRE Christine", bon:"B88",  caisses:112, poids:5058},
+  {exploit:"CV", date:"2022-09-13", pressoir:"CORRE Christine", bon:"B96",  caisses:24,  poids:1141},
+  {exploit:"CV", date:"2022-09-13", pressoir:"CORRE Christine", bon:"B115", caisses:100, poids:4593},
+  {exploit:"CV", date:"2022-09-13", pressoir:"CORRE Christine", bon:"B126", caisses:64,  poids:2810},
+  {exploit:"CV", date:"2022-09-14", pressoir:"CORRE Christine", bon:"B127", caisses:64,  poids:2998},
+  {exploit:"CV", date:"2022-09-14", pressoir:"CORRE Christine", bon:"B139", caisses:64,  poids:2976},
+  {exploit:"CV", date:"2022-09-14", pressoir:"VADEZ David",     bon:"B95",  caisses:48,  poids:2098},
+  {exploit:"CV", date:"2022-09-15", pressoir:"VADEZ David",     bon:"B105", caisses:128, poids:5761},
+  {exploit:"CV", date:"2022-09-15", pressoir:"VADEZ David",     bon:"B114", caisses:12,  poids:541},
+  {exploit:"CV", date:"2022-09-15", pressoir:"CORRE Christine", bon:"B144", caisses:34,  poids:1561},
+];
+
+window.lancerImport = async function(){
+  document.querySelector('.btn').disabled=true;
+  document.getElementById('log').innerHTML='';
+  try {
+    log('📋 Création de la campagne 2022...');
+    await setDoc(doc(db,'campagnes','2022'), campagne2022);
+    log('✓ Structure campagne créée', 'ok');
+
+    log('\n🚜 Import des remorques CORRE-VADEZ...');
+    for(const r of remorquesCV){
+      await addDoc(collection(db,'campagnes','2022','remorques'), r);
+      log(`  ✓ ${r.parcelle} — ${r.caisses} caisses`, 'ok');
+    }
+
+    log('\n🚜 Import des remorques FIEVET...');
+    for(const r of remorquesF){
+      await addDoc(collection(db,'campagnes','2022','remorques'), r);
+      log(`  ✓ ${r.parcelle} — ${r.caisses} caisses`, 'ok');
+    }
+
+    log('\n📄 Import des bons pressoir CORRE-VADEZ...');
+    for(const b of bonsCV){
+      await addDoc(collection(db,'campagnes','2022','bons'), b);
+      log(`  ✓ ${b.bon} · ${b.pressoir} — ${b.caisses} caisses · ${b.poids} kg`, 'ok');
+    }
+
+    log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'ok');
+    log('✅ Import 2022 terminé avec succès !', 'ok');
+    log(`   CV : ${remorquesCV.reduce((a,r)=>a+r.caisses,0)} caisses · ${bonsCV.reduce((a,b)=>a+b.poids,0).toLocaleString()} kg`, 'ok');
+    log(`   FIEVET : ${remorquesF.reduce((a,r)=>a+r.caisses,0)} caisses`, 'ok');
+    log('\n👉 Tu peux fermer cette page et ouvrir l\'appli Vendanges.', 'ok');
+  } catch(e){
+    log('❌ Erreur : '+e.message, 'err');
+    document.querySelector('.btn').disabled=false;
+  }
+}
+
+window.supprimerCampagne = async function(){
+  if(!confirm('Supprimer définitivement la campagne 2022 et toutes ses données ?')) return;
+  log('🗑 Suppression de la campagne 2022...');
+  try {
+    const [rs,bs]=await Promise.all([
+      getDocs(collection(db,'campagnes','2022','remorques')),
+      getDocs(collection(db,'campagnes','2022','bons'))
+    ]);
+    await Promise.all([...rs.docs.map(d=>deleteDoc(d.ref)),...bs.docs.map(d=>deleteDoc(d.ref))]);
+    await deleteDoc(doc(db,'campagnes','2022'));
+    log('✓ Campagne 2022 supprimée', 'ok');
+  } catch(e){
+    log('❌ Erreur : '+e.message, 'err');
+  }
+}
+</script>
+</body>
+</html>
