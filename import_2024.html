@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Import Vendanges 2024</title>
+<style>
+body{font-family:sans-serif;max-width:500px;margin:40px auto;padding:20px;background:#f5f3ee;color:#1c1917}
+h1{font-size:20px;margin-bottom:6px;color:#2d5a27}
+p{font-size:13px;color:#6b6560;margin-bottom:20px}
+.btn{width:100%;padding:14px;background:#2d5a27;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:10px}
+.btn:disabled{background:#9c9590;cursor:not-allowed}
+.btn-danger{background:#991b1b}
+.log{background:#fff;border:1px solid #e3dfd6;border-radius:10px;padding:14px;font-size:12px;font-family:monospace;min-height:120px;max-height:300px;overflow-y:auto;white-space:pre-wrap;margin-top:10px}
+.ok{color:#2d5a27}.err{color:#991b1b}.info{color:#1e3a5f}
+.warn{background:#fef3c7;border:1px solid #92400e;border-radius:8px;padding:10px;font-size:12px;color:#92400e;margin-bottom:16px}
+</style>
+</head>
+<body>
+<h1>🍇 Import Vendanges 2024</h1>
+<p>Cet outil va créer la campagne 2024 dans Firebase avec toutes les données extraites de ton fichier Excel.</p>
+<div class="warn">⚠️ Si une campagne 2024 existe déjà, elle sera <strong>écrasée</strong>. Utilise le bouton "Supprimer 2024" d'abord si nécessaire.</div>
+<button class="btn" onclick="lancerImport()">🚀 Importer les données 2024</button>
+<button class="btn btn-danger" onclick="supprimerCampagne()">🗑 Supprimer la campagne 2024</button>
+<div class="log" id="log">En attente...</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, doc, setDoc, addDoc, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyD0YXEmLDHiQ9GeXPMIenzaLec26JwCb2g",
+  authDomain: "vendanges-127c9.firebaseapp.com",
+  projectId: "vendanges-127c9",
+  storageBucket: "vendanges-127c9.firebasestorage.app",
+  messagingSenderId: "527184043986",
+  appId: "1:527184043986:web:faba4a97e38c30ff0ab20b"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+
+function log(msg, type='info'){
+  const el=document.getElementById('log');
+  el.innerHTML+=`<span class="${type==='ok'?'ok':type==='err'?'err':'info'}">${msg}</span>\n`;
+  el.scrollTop=el.scrollHeight;
+}
+
+// ── DONNÉES 2024 ─────────────────────────────────────────────
+// Dates vendanges : 18-20 sept + 25 sept (Chalmonts DEPOIVRE)
+
+const campagne2024 = {
+  rendement: 10000,
+  poidsPrev: 42.85,
+  active: false,
+  exploitations: {
+    CV: {
+      nom: "CORRE-VADEZ",
+      rendement: 10000,
+      poidsPrev: 42.85,
+      pressoirs: ["TELMONT","DUPRESSOIR","DEPOIVRE"],
+      parcelles: [
+        {nom:"Les Fosses Blancs", surface:0.42,   obj:98},
+        {nom:"Les 13 ares",       surface:0.13,   obj:30},
+        {nom:"Les Cordons",       surface:0.38,   obj:89},
+        {nom:"Les Sablons",       surface:0.80,   obj:187},
+        {nom:"Les Chalmonts",     surface:0.60,   obj:140},
+        {nom:"Fontaine Denis",    surface:0.31,   obj:72},
+        {nom:"Les Petites",       surface:0.28,   obj:65},
+      ]
+    },
+    F: {
+      nom: "FIEVET",
+      rendement: 10000,
+      poidsPrev: 43.07,
+      pressoirs: ["TELMONT"],
+      parcelles: [
+        {nom:"Les Paradis Blancs", surface:0.2000, obj:46},
+        {nom:"Les Trouots Noirs",  surface:0.1273, obj:30},
+      ]
+    }
+  }
+};
+
+// Remorques CORRE-VADEZ 2024 (reconstituées depuis totaux)
+const remorquesCV = [
+  // Les Fosses Blancs : total 229 (24+24+84+64+33)
+  {exploit:"CV", parcelle:"Les Fosses Blancs", caisses:24,  dt:"2024-09-18T08:00"},
+  {exploit:"CV", parcelle:"Les Fosses Blancs", caisses:24,  dt:"2024-09-18T14:00"},
+  {exploit:"CV", parcelle:"Les Fosses Blancs", caisses:84,  dt:"2024-09-19T08:00"},
+  {exploit:"CV", parcelle:"Les Fosses Blancs", caisses:64,  dt:"2024-09-19T14:00"},
+  {exploit:"CV", parcelle:"Les Fosses Blancs", caisses:33,  dt:"2024-09-20T08:00"},
+  // Les 13 ares : total 57 (49+8)
+  {exploit:"CV", parcelle:"Les 13 ares",       caisses:49,  dt:"2024-09-18T09:00"},
+  {exploit:"CV", parcelle:"Les 13 ares",       caisses:8,   dt:"2024-09-19T09:00"},
+  // Les Cordons : total 153 (60+93)
+  {exploit:"CV", parcelle:"Les Cordons",       caisses:60,  dt:"2024-09-18T10:00"},
+  {exploit:"CV", parcelle:"Les Cordons",       caisses:93,  dt:"2024-09-19T10:00"},
+  // Les Sablons : total 238 (84+29+86+39)
+  {exploit:"CV", parcelle:"Les Sablons",       caisses:84,  dt:"2024-09-18T11:00"},
+  {exploit:"CV", parcelle:"Les Sablons",       caisses:29,  dt:"2024-09-18T16:00"},
+  {exploit:"CV", parcelle:"Les Sablons",       caisses:86,  dt:"2024-09-19T11:00"},
+  {exploit:"CV", parcelle:"Les Sablons",       caisses:39,  dt:"2024-09-20T09:00"},
+  // Les Chalmonts : total 232 (en une fois — DEPOIVRE le 25/09)
+  {exploit:"CV", parcelle:"Les Chalmonts",     caisses:232, dt:"2024-09-25T08:00"},
+  // Fontaine Denis : total 104
+  {exploit:"CV", parcelle:"Fontaine Denis",    caisses:104, dt:"2024-09-20T10:00"},
+  // Les Petites : total 118 (84+34)
+  {exploit:"CV", parcelle:"Les Petites",       caisses:84,  dt:"2024-09-19T13:00"},
+  {exploit:"CV", parcelle:"Les Petites",       caisses:34,  dt:"2024-09-20T13:00"},
+];
+
+// Remorques FIEVET 2024
+const remorquesF = [
+  // Les Paradis Blancs : total 44 (24+20)
+  {exploit:"F", parcelle:"Les Paradis Blancs", caisses:24, dt:"2024-09-19T08:00"},
+  {exploit:"F", parcelle:"Les Paradis Blancs", caisses:20, dt:"2024-09-19T14:00"},
+  // Les Trouots Noirs : total 30
+  {exploit:"F", parcelle:"Les Trouots Noirs",  caisses:30, dt:"2024-09-19T10:00"},
+];
+
+// Bons pressoir CORRE-VADEZ 2024
+const bonsCV = [
+  {exploit:"CV", date:"2024-09-18", pressoir:"TELMONT",    bon:"B98",  caisses:84,  poids:3722},
+  {exploit:"CV", date:"2024-09-18", pressoir:"TELMONT",    bon:"B111", caisses:79,  poids:3278},
+  {exploit:"CV", date:"2024-09-18", pressoir:"TELMONT",    bon:"B116", caisses:36,  poids:1518},
+  {exploit:"CV", date:"2024-09-19", pressoir:"TELMONT",    bon:"B145", caisses:28,  poids:1170},
+  {exploit:"CV", date:"2024-09-19", pressoir:"TELMONT",    bon:"B144", caisses:108, poids:4440},
+  {exploit:"CV", date:"2024-09-19", pressoir:"TELMONT",    bon:"B133", caisses:60,  poids:2505},
+  {exploit:"CV", date:"2024-09-19", pressoir:"TELMONT",    bon:"B134", caisses:91,  poids:3800},
+  {exploit:"CV", date:"2024-09-20", pressoir:"TELMONT",    bon:"B154", caisses:152, poids:6328},
+  {exploit:"CV", date:"2024-09-20", pressoir:"TELMONT",    bon:"B147", caisses:30,  poids:1233},
+  {exploit:"CV", date:"2024-09-20", pressoir:"TELMONT",    bon:"B165", caisses:8,   poids:364},
+  {exploit:"CV", date:"2024-09-20", pressoir:"TELMONT",    bon:"",     caisses:185, poids:7830},
+  {exploit:"CV", date:"2024-09-20", pressoir:"DUPRESSOIR", bon:"",     caisses:8,   poids:320},
+  {exploit:"CV", date:"2024-09-25", pressoir:"DEPOIVRE",   bon:"",     caisses:232, poids:10684},
+];
+
+// Bons pressoir FIEVET 2024
+const bonsF = [
+  {exploit:"F", date:"2024-09-19", pressoir:"TELMONT", bon:"B135", caisses:31, poids:1378},
+  {exploit:"F", date:"2024-09-19", pressoir:"TELMONT", bon:"B166", caisses:6,  poids:261},
+  {exploit:"F", date:"2024-09-19", pressoir:"TELMONT", bon:"B146", caisses:36, poids:1518},
+  {exploit:"F", date:"2024-09-19", pressoir:"TELMONT", bon:"B167", caisses:3,  poids:116},
+];
+
+window.lancerImport = async function(){
+  document.querySelector('.btn').disabled=true;
+  document.getElementById('log').innerHTML='';
+  try {
+    log('📋 Création de la campagne 2024...');
+    await setDoc(doc(db,'campagnes','2024'), campagne2024);
+    log('✓ Structure campagne créée', 'ok');
+
+    log('\n🚜 Import des remorques CORRE-VADEZ...');
+    for(const r of remorquesCV){
+      await addDoc(collection(db,'campagnes','2024','remorques'), r);
+      log(`  ✓ ${r.parcelle} — ${r.caisses} caisses`, 'ok');
+    }
+
+    log('\n🚜 Import des remorques FIEVET...');
+    for(const r of remorquesF){
+      await addDoc(collection(db,'campagnes','2024','remorques'), r);
+      log(`  ✓ ${r.parcelle} — ${r.caisses} caisses`, 'ok');
+    }
+
+    log('\n📄 Import des bons pressoir CORRE-VADEZ...');
+    for(const b of bonsCV){
+      await addDoc(collection(db,'campagnes','2024','bons'), b);
+      log(`  ✓ ${b.bon||'—'} · ${b.pressoir} — ${b.caisses} caisses · ${b.poids} kg`, 'ok');
+    }
+
+    log('\n📄 Import des bons pressoir FIEVET...');
+    for(const b of bonsF){
+      await addDoc(collection(db,'campagnes','2024','bons'), b);
+      log(`  ✓ ${b.bon||'—'} · ${b.pressoir} — ${b.caisses} caisses · ${b.poids} kg`, 'ok');
+    }
+
+    const totCV=remorquesCV.reduce((a,r)=>a+r.caisses,0);
+    const totF=remorquesF.reduce((a,r)=>a+r.caisses,0);
+    const totPoidsCV=bonsCV.reduce((a,b)=>a+b.poids,0);
+    const totPoidsF=bonsF.reduce((a,b)=>a+b.poids,0);
+    const totCaissesCV=bonsCV.reduce((a,b)=>a+b.caisses,0);
+    const totCaissesF=bonsF.reduce((a,b)=>a+b.caisses,0);
+
+    log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'ok');
+    log('✅ Import 2024 terminé avec succès !', 'ok');
+    log(`   CV : ${totCV} caisses · ${totPoidsCV.toLocaleString()} kg · ${(totPoidsCV/totCaissesCV).toFixed(2)} kg/caisse`, 'ok');
+    log(`   FIEVET : ${totF} caisses · ${totPoidsF.toLocaleString()} kg · ${(totPoidsF/totCaissesF).toFixed(2)} kg/caisse`, 'ok');
+    log('\n👉 Tu peux fermer cette page et ouvrir l\'appli Vendanges.', 'ok');
+  } catch(e){
+    log('❌ Erreur : '+e.message, 'err');
+    document.querySelector('.btn').disabled=false;
+  }
+}
+
+window.supprimerCampagne = async function(){
+  if(!confirm('Supprimer définitivement la campagne 2024 et toutes ses données ?')) return;
+  log('🗑 Suppression de la campagne 2024...');
+  try {
+    const [rs,bs]=await Promise.all([
+      getDocs(collection(db,'campagnes','2024','remorques')),
+      getDocs(collection(db,'campagnes','2024','bons'))
+    ]);
+    await Promise.all([...rs.docs.map(d=>deleteDoc(d.ref)),...bs.docs.map(d=>deleteDoc(d.ref))]);
+    await deleteDoc(doc(db,'campagnes','2024'));
+    log('✓ Campagne 2024 supprimée', 'ok');
+  } catch(e){
+    log('❌ Erreur : '+e.message, 'err');
+  }
+}
+</script>
+</body>
+</html>
