@@ -10,6 +10,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
 :root{
   --bg:#f5f3ee;--bg2:#ece9e2;--bg3:#e3dfd6;
@@ -1411,9 +1413,11 @@ function updateFab(screen){
 
 // ── PDF FIN DE CAMPAGNE ───────────────────────────────────────
 window.genererPDF=async function(exploitKey){
-  const c=camp();
+  const { jsPDF } = window.jspdf;
+  if(!jsPDF){ showToast('Bibliothèque PDF non chargée'); return; }
+
   const e=exploitKey||S.exploit;
-  const d=c.exploitations[e];
+  const d=camp().exploitations[e];
   const pm=poidsReel(e);
   const rems=Object.values(S.remorques).filter(r=>r.exploit===e);
   const bons=Object.values(S.bons).filter(b=>b.exploit===e);
@@ -1424,137 +1428,164 @@ window.genererPDF=async function(exploitKey){
   const surf=d.parcelles.reduce((a,p)=>a+p.surface,0);
   const rdtReel=surf>0&&totS>0?Math.round(totS*pm.val/surf):0;
   const comm=d.commentaires||{};
+  const dateGen=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
 
-  // Lignes parcelles
-  const lignesParc=d.parcelles.map(p=>{
-    const s=totSorties(e,p.nom);
-    const obj=objDynamique(e,p);
-    const ec=s-obj;
+  const pdf = new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
+  const W=210, mL=14, mR=14, usableW=W-mL-mR;
+  let y=18;
+  const green=[45,90,39], grey=[107,101,96], lightGrey=[245,243,238], darkText=[28,25,23];
+
+  // ── En-tête ──────────────────────────────────────────────
+  pdf.setFillColor(...green);
+  pdf.rect(0,0,W,14,'F');
+  pdf.setTextColor(255,255,255);
+  pdf.setFontSize(13); pdf.setFont('helvetica','bold');
+  pdf.text(`Rapport Vendanges ${S.annee} — ${d.nom}`, mL, 9.5);
+  pdf.setFontSize(8); pdf.setFont('helvetica','normal');
+  pdf.text(`Généré le ${dateGen}`, W-mR, 9.5, {align:'right'});
+  y=22;
+
+  // ── Vignettes stats ──────────────────────────────────────
+  const stats=[
+    ['Appellation', `${rdtExploit(e).toLocaleString('fr-FR')} kg/ha`],
+    ['Caisses récoltées', `${totS} / ${totO}`],
+    ['Poids total', `${totP.toLocaleString('fr-FR')} kg`],
+    ['Rdt réel', rdtReel>0?`${rdtReel.toLocaleString('fr-FR')} kg/ha`:'—'],
+  ];
+  const bw=(usableW-9)/4;
+  stats.forEach(([label,val],i)=>{
+    const x=mL+i*(bw+3);
+    pdf.setFillColor(...lightGrey);
+    pdf.roundedRect(x,y,bw,16,2,2,'F');
+    pdf.setTextColor(...grey); pdf.setFontSize(7); pdf.setFont('helvetica','bold');
+    pdf.text(label.toUpperCase(), x+bw/2, y+5.5, {align:'center'});
+    pdf.setTextColor(...darkText); pdf.setFontSize(10); pdf.setFont('helvetica','bold');
+    pdf.text(val, x+bw/2, y+12, {align:'center'});
+  });
+  y+=22;
+
+  // Poids info
+  pdf.setFillColor(pm.reel?234:254, pm.reel?243:243, pm.reel?232:199);
+  pdf.roundedRect(mL,y,usableW,8,2,2,'F');
+  pdf.setTextColor(pm.reel?45:146, pm.reel?90:64, pm.reel?39:14);
+  pdf.setFontSize(8); pdf.setFont('helvetica','normal');
+  const poidsInfo=pm.reel
+    ? `✓ Poids réel : ${pm.val.toFixed(2)} kg/caisse  (${totP.toLocaleString('fr-FR')} kg / ${totC} caisses pesées)`
+    : `⏳ Poids prévisionnel : ${pm.val} kg/caisse  (en attente des bons pressoir)`;
+  pdf.text(poidsInfo, mL+4, y+5.2);
+  y+=13;
+
+  // ── Tableau parcelles ────────────────────────────────────
+  pdf.setTextColor(...green); pdf.setFontSize(10); pdf.setFont('helvetica','bold');
+  pdf.text('Synthèse par parcelle', mL, y); y+=4;
+
+  const rowsParc=d.parcelles.map(p=>{
+    const s=totSorties(e,p.nom), obj=objDynamique(e,p), ec=s-obj;
     const rha=s>0?Math.round(s*pm.val/p.surface):0;
-    return `<tr>
-      <td>${p.nom}</td>
-      <td style="text-align:right">${p.surface.toFixed(2)}</td>
-      <td style="text-align:right">${obj}</td>
-      <td style="text-align:right">${s}</td>
-      <td style="text-align:right;color:${ec>0?'#2d5a27':ec<0?'#991b1b':'#1c1917'}">${ec>0?'+':''}${ec}</td>
-      <td style="text-align:right">${s>0?rha.toLocaleString('fr-FR'):'—'}</td>
-    </tr>`;
-  }).join('');
+    return [p.nom, p.surface.toFixed(2), String(obj), String(s), (ec>0?'+':'')+ec, s>0?rha.toLocaleString('fr-FR'):'—'];
+  });
+  const totEc=totS-totO;
+  rowsParc.push(['TOTAL', surf.toFixed(2), String(totO), String(totS), (totEc>0?'+':'')+totEc, rdtReel>0?rdtReel.toLocaleString('fr-FR'):'—']);
 
-  // Lignes bons pressoir
-  const lignesBons=bons.sort((a,b)=>a.date.localeCompare(b.date)).map(b=>`<tr>
-    <td>${b.date}</td>
-    <td>${b.bon||'—'}</td>
-    <td>${b.pressoir}</td>
-    <td style="text-align:right">${b.caisses}</td>
-    <td style="text-align:right">${b.poids.toLocaleString('fr-FR')}</td>
-    <td style="text-align:right">${b.caisses>0?(b.poids/b.caisses).toFixed(2):'—'}</td>
-  </tr>`).join('');
+  pdf.autoTable({
+    startY:y, margin:{left:mL,right:mR},
+    head:[['Parcelle','Surface (ha)','Objectif','Sorties','Écart','Rdt (kg/ha)']],
+    body:rowsParc,
+    styles:{fontSize:9,cellPadding:2.5},
+    headStyles:{fillColor:green,textColor:[255,255,255],fontStyle:'bold',fontSize:8},
+    columnStyles:{0:{cellWidth:50},1:{halign:'right'},2:{halign:'right'},3:{halign:'right'},4:{halign:'right'},5:{halign:'right'}},
+    didParseCell:(d)=>{ if(d.row.index===rowsParc.length-1){d.cell.styles.fontStyle='bold';d.cell.styles.fillColor=[234,243,232];} }
+  });
+  y=pdf.lastAutoTable.finalY+6;
 
-  // Lignes remorques
-  const remSort=rems.sort((a,b)=>a.dt.localeCompare(b.dt));
-  const lignesRem=remSort.map(r=>{
-    const dt=new Date(r.dt);
-    return `<tr>
-      <td>${dt.toLocaleDateString('fr-FR')}</td>
-      <td>${dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</td>
-      <td>${r.parcelle}</td>
-      <td style="text-align:right">${r.caisses}</td>
-    </tr>`;
-  }).join('');
-
-  // Commentaires
+  // ── Commentaires ─────────────────────────────────────────
   const etiq=[['meteo','Météo'],['qualite','Qualité'],['incidents','Incidents'],['observations','Observations']];
-  const commHtml=etiq.filter(([k])=>comm[k]&&comm[k].trim()).map(([k,l])=>`
-    <div style="margin-bottom:12px">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#6b6560;margin-bottom:3px">${l}</div>
-      <div style="font-size:12px;color:#1c1917;line-height:1.6;white-space:pre-wrap">${comm[k]}</div>
-    </div>`).join('');
+  const commFilled=etiq.filter(([k])=>comm[k]&&comm[k].trim());
+  if(commFilled.length>0){
+    pdf.setTextColor(...green); pdf.setFontSize(10); pdf.setFont('helvetica','bold');
+    pdf.text('Commentaires', mL, y); y+=5;
+    commFilled.forEach(([k,label])=>{
+      pdf.setTextColor(...grey); pdf.setFontSize(8); pdf.setFont('helvetica','bold');
+      pdf.text(label.toUpperCase(), mL, y); y+=4;
+      pdf.setTextColor(...darkText); pdf.setFont('helvetica','normal'); pdf.setFontSize(9);
+      const lines=pdf.splitTextToSize(comm[k], usableW);
+      pdf.text(lines, mL, y); y+=lines.length*4.5+3;
+    });
+    y+=2;
+  }
 
-  const html=`<!DOCTYPE html>
-<html lang="fr"><head><meta charset="UTF-8">
-<title>Rapport Vendanges ${S.annee} — ${d.nom}</title>
-<style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:12px;color:#1c1917;padding:20px 28px}
-  h1{font-size:20px;font-weight:700;color:#2d5a27;margin-bottom:2px}
-  .subtitle{font-size:12px;color:#6b6560;margin-bottom:18px}
-  h2{font-size:13px;font-weight:700;color:#2d5a27;margin:20px 0 8px;padding-bottom:4px;border-bottom:2px solid #eaf3e8;text-transform:uppercase;letter-spacing:0.05em}
-  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
-  .stat{background:#f5f3ee;border-radius:8px;padding:10px 12px;border:1px solid #e3dfd6}
-  .stat-label{font-size:9px;color:#9c9590;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:3px}
-  .stat-val{font-size:18px;font-weight:700;color:#1c1917}
-  .stat-val.green{color:#2d5a27}.stat-val.blue{color:#1e3a5f}
-  table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:6px}
-  th{background:#f5f3ee;padding:6px 8px;text-align:left;font-weight:600;font-size:10px;color:#6b6560;text-transform:uppercase;letter-spacing:0.04em;border-bottom:2px solid #e3dfd6}
-  th:not(:first-child){text-align:right}
-  td{padding:5px 8px;border-bottom:1px solid #f0ede8;vertical-align:middle}
-  tr:last-child td{border-bottom:none}
-  tr.total td{font-weight:700;background:#eaf3e8;border-top:2px solid #2d5a27}
-  .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700;text-transform:uppercase}
-  .badge.green{background:#eaf3e8;color:#2d5a27}
-  .badge.grey{background:#f1efe8;color:#6b6560}
-  .poids-info{font-size:11px;color:#6b6560;margin-bottom:10px;padding:7px 10px;background:#fef3c7;border-radius:6px;border:1px solid #f59e0b}
-  .poids-info.reel{background:#eaf3e8;border-color:#2d5a27;color:#2d5a27}
-  .page-break{page-break-before:always;margin-top:20px}
-  .footer{margin-top:24px;padding-top:10px;border-top:1px solid #e3dfd6;font-size:10px;color:#9c9590;text-align:right}
-  @media print{body{padding:10px 15px}.page-break{page-break-before:always}}
-</style></head><body>
+  // ── Page 2 : Annexes ─────────────────────────────────────
+  pdf.addPage();
+  y=18;
 
-<h1>🍇 Rapport de Vendanges ${S.annee}</h1>
-<div class="subtitle">${d.nom} — Généré le ${new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})}</div>
+  // En-tête page 2
+  pdf.setFillColor(...green);
+  pdf.rect(0,0,W,10,'F');
+  pdf.setTextColor(255,255,255); pdf.setFontSize(9); pdf.setFont('helvetica','bold');
+  pdf.text(`Annexes — ${d.nom} ${S.annee}`, mL, 7);
+  y=18;
 
-<div class="stats">
-  <div class="stat"><div class="stat-label">Appellation</div><div class="stat-val blue">${rdtExploit(e).toLocaleString('fr-FR')}<span style="font-size:11px;font-weight:400"> kg/ha</span></div></div>
-  <div class="stat"><div class="stat-label">Caisses récoltées</div><div class="stat-val">${totS}<span style="font-size:11px;font-weight:400"> / ${totO}</span></div></div>
-  <div class="stat"><div class="stat-label">Poids total</div><div class="stat-val green">${totP.toLocaleString('fr-FR')}<span style="font-size:11px;font-weight:400"> kg</span></div></div>
-  <div class="stat"><div class="stat-label">Rdt réel</div><div class="stat-val green">${rdtReel>0?rdtReel.toLocaleString('fr-FR'):'—'}<span style="font-size:11px;font-weight:400"> kg/ha</span></div></div>
-</div>
+  // Bons pressoir
+  pdf.setTextColor(...green); pdf.setFontSize(10); pdf.setFont('helvetica','bold');
+  pdf.text(`Annexe 1 — Bons pressoir  (${bons.length} bons · ${totC} caisses · ${totP.toLocaleString('fr-FR')} kg)`, mL, y); y+=4;
 
-<div class="${pm.reel?'poids-info reel':'poids-info'}">
-  ${pm.reel?'✓ Poids réel calculé :':'⏳ Poids prévisionnel :'} <strong>${pm.val.toFixed(2)} kg/caisse</strong>
-  ${pm.reel?'('+totP.toLocaleString('fr-FR')+' kg / '+totC+' caisses pesées)':'(en attente des bons pressoir)'}
-</div>
+  if(bons.length>0){
+    const rowsBons=bons.sort((a,b)=>a.date.localeCompare(b.date)).map(b=>[
+      b.date, b.bon||'—', b.pressoir, String(b.caisses),
+      b.poids.toLocaleString('fr-FR'), b.caisses>0?(b.poids/b.caisses).toFixed(2):'—'
+    ]);
+    rowsBons.push(['TOTAL','','',String(totC),totP.toLocaleString('fr-FR'),totC>0?(totP/totC).toFixed(2):'—']);
+    pdf.autoTable({
+      startY:y, margin:{left:mL,right:mR},
+      head:[['Date','N° Bon','Pressoir','Caisses','Poids (kg)','kg/caisse']],
+      body:rowsBons,
+      styles:{fontSize:8.5,cellPadding:2.2},
+      headStyles:{fillColor:green,textColor:[255,255,255],fontStyle:'bold',fontSize:8},
+      columnStyles:{3:{halign:'right'},4:{halign:'right'},5:{halign:'right'}},
+      didParseCell:(d)=>{ if(d.row.index===rowsBons.length-1){d.cell.styles.fontStyle='bold';d.cell.styles.fillColor=[234,243,232];} }
+    });
+    y=pdf.lastAutoTable.finalY+8;
+  } else {
+    pdf.setTextColor(...grey); pdf.setFontSize(9); pdf.setFont('helvetica','italic');
+    pdf.text('Aucun bon pressoir enregistré.', mL, y); y+=10;
+  }
 
-<h2>Synthèse par parcelle</h2>
-<table>
-  <thead><tr><th>Parcelle</th><th>Surface (ha)</th><th>Objectif</th><th>Sorties</th><th>Écart</th><th>Rdt (kg/ha)</th></tr></thead>
-  <tbody>${lignesParc}</tbody>
-  <tfoot><tr class="total">
-    <td>TOTAL</td>
-    <td style="text-align:right">${surf.toFixed(2)}</td>
-    <td style="text-align:right">${totO}</td>
-    <td style="text-align:right">${totS}</td>
-    <td style="text-align:right;color:${totS-totO>0?'#2d5a27':totS-totO<0?'#991b1b':'#1c1917'}">${totS-totO>0?'+':''}${totS-totO}</td>
-    <td style="text-align:right">${rdtReel>0?rdtReel.toLocaleString('fr-FR'):'—'}</td>
-  </tr></tfoot>
-</table>
+  // Remorques
+  pdf.setTextColor(...green); pdf.setFontSize(10); pdf.setFont('helvetica','bold');
+  pdf.text(`Annexe 2 — Remorques  (${rems.length} sorties · ${totS} caisses)`, mL, y); y+=4;
 
-${commHtml?`<h2>Commentaires</h2><div style="padding:10px;background:#f5f3ee;border-radius:8px;border:1px solid #e3dfd6">${commHtml}</div>`:''}
+  if(rems.length>0){
+    const remSort=rems.sort((a,b)=>a.dt.localeCompare(b.dt));
+    const rowsRem=remSort.map(r=>{
+      const dt=new Date(r.dt);
+      return [dt.toLocaleDateString('fr-FR'), dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}), r.parcelle, String(r.caisses)];
+    });
+    rowsRem.push(['TOTAL','','',String(totS)]);
+    pdf.autoTable({
+      startY:y, margin:{left:mL,right:mR},
+      head:[['Date','Heure','Parcelle','Caisses']],
+      body:rowsRem,
+      styles:{fontSize:8.5,cellPadding:2.2},
+      headStyles:{fillColor:green,textColor:[255,255,255],fontStyle:'bold',fontSize:8},
+      columnStyles:{3:{halign:'right'}},
+      didParseCell:(d)=>{ if(d.row.index===rowsRem.length-1){d.cell.styles.fontStyle='bold';d.cell.styles.fillColor=[234,243,232];} }
+    });
+    y=pdf.lastAutoTable.finalY+6;
+  } else {
+    pdf.setTextColor(...grey); pdf.setFontSize(9); pdf.setFont('helvetica','italic');
+    pdf.text('Aucune remorque enregistrée.', mL, y);
+  }
 
-<div class="page-break">
-<h2>Annexe 1 — Bons pressoir (${bons.length} bons · ${totC} caisses · ${totP.toLocaleString('fr-FR')} kg)</h2>
-${bons.length>0?`<table>
-  <thead><tr><th>Date</th><th>N° Bon</th><th>Pressoir</th><th>Caisses</th><th>Poids (kg)</th><th>kg/caisse</th></tr></thead>
-  <tbody>${lignesBons}</tbody>
-  <tfoot><tr class="total"><td colspan="3">TOTAL</td><td style="text-align:right">${totC}</td><td style="text-align:right">${totP.toLocaleString('fr-FR')}</td><td style="text-align:right">${totC>0?(totP/totC).toFixed(2):'—'}</td></tr></tfoot>
-</table>`:'<p style="color:#9c9590;font-style:italic;padding:8px">Aucun bon pressoir enregistré.</p>'}
+  // Footer toutes pages
+  const pageCount=pdf.internal.getNumberOfPages();
+  for(let i=1;i<=pageCount;i++){
+    pdf.setPage(i);
+    pdf.setTextColor(...grey); pdf.setFontSize(7); pdf.setFont('helvetica','normal');
+    pdf.text(`Vendanges ${S.annee} · ${d.nom} · Page ${i}/${pageCount}`, W/2, 290, {align:'center'});
+  }
 
-<h2 style="margin-top:20px">Annexe 2 — Détail des remorques (${rems.length} sorties · ${totS} caisses)</h2>
-${rems.length>0?`<table>
-  <thead><tr><th>Date</th><th>Heure</th><th>Parcelle</th><th>Caisses</th></tr></thead>
-  <tbody>${lignesRem}</tbody>
-  <tfoot><tr class="total"><td colspan="3">TOTAL</td><td style="text-align:right">${totS}</td></tr></tfoot>
-</table>`:'<p style="color:#9c9590;font-style:italic;padding:8px">Aucune remorque enregistrée.</p>'}
-</div>
-
-<div class="footer">Vendanges ${S.annee} · ${d.nom} · Application Vendanges par davcorre51</div>
-</body></html>`;
-
-  const w=window.open('','_blank');
-  w.document.write(html);
-  w.document.close();
-  setTimeout(()=>w.print(),500);
+  pdf.save(`Vendanges_${S.annee}_${d.nom.replace(/\s+/g,'_')}.pdf`);
+  showToast('✓ PDF généré et téléchargé !');
 }
 
 window.showToast=function(msg){
