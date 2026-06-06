@@ -132,9 +132,6 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 .quick-title{font-size:16px;font-weight:600;color:var(--text);margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
 .quick-close{background:none;border:none;font-size:22px;color:var(--text3);cursor:pointer;padding:0;line-height:1}
-/* Offline robuste */
-.sync-badge{display:none;position:fixed;top:60px;right:12px;background:var(--amber);color:#fff;font-size:10px;font-weight:600;padding:3px 8px;border-radius:10px;z-index:48;font-family:'DM Mono',monospace}
-.sync-badge.show{display:block}
 .loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;gap:12px;color:var(--text2);font-size:13px}
 .spinner{width:28px;height:28px;border:2px solid var(--bg3);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -437,8 +434,6 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
   </div>
 </div>
 
-<!-- BADGE SYNC OFFLINE -->
-<div class="sync-badge" id="sync-badge">⏳ Synchro en attente</div>
 
 <div class="toast" id="toast"></div>
 
@@ -459,24 +454,8 @@ const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 enableIndexedDbPersistence(db).catch(()=>{});
 
-let pendingOps = 0;
-function trackPending(delta){
-  pendingOps=Math.max(0,pendingOps+delta);
-  document.getElementById('sync-badge').classList.toggle('show', pendingOps>0);
-}
-async function fbSet(ref, data){ trackPending(1); try{ await setDoc(ref,data); }finally{ trackPending(-1); } }
-async function fbAdd(ref, data){ trackPending(1); try{ await addDoc(ref,data); }finally{ trackPending(-1); } }
-async function fbUpdate(ref, data){ trackPending(1); try{ await updateDoc(ref,data); }finally{ trackPending(-1); } }
-async function fbDelete(ref){ trackPending(1); try{ await deleteDoc(ref); }finally{ trackPending(-1); } }
-
-window.addEventListener('online',()=>{
-  document.getElementById('offline-banner').classList.remove('show');
-  showToast('✓ Connexion rétablie — synchronisation en cours');
-});
-window.addEventListener('offline',()=>{
-  document.getElementById('offline-banner').classList.add('show');
-  showToast('📵 Mode hors-ligne — les saisies sont conservées');
-});
+window.addEventListener('online',()=>{document.getElementById('offline-banner').classList.remove('show');showToast('✓ Connexion rétablie');});
+window.addEventListener('offline',()=>{document.getElementById('offline-banner').classList.add('show');});
 
 // ── ÉTAT ──────────────────────────────────────────────────────
 let S = {
@@ -759,7 +738,7 @@ window.editRem=function(id){
 }
 window.confirmDeleteRem=function(id){
   showModal('Supprimer la remorque','Confirmer la suppression ? Action irréversible.','Supprimer','btn-danger',async()=>{
-    await fbDelete(doc(db,'campagnes',String(S.annee),'remorques',id));
+    await deleteDoc(doc(db,'campagnes',String(S.annee),'remorques',id));
     showToast('Remorque supprimée');
   });
 }
@@ -769,8 +748,8 @@ window.saveRem=async function(){
   if(!caisses||caisses<=0){showToast('Nombre de caisses invalide');return;}
   if(!dt){showToast('Date et heure requises');return;}
   const obj={exploit:e,parcelle:parc,caisses,dt};
-  if(S.editRemId){await fbUpdate(doc(db,'campagnes',String(S.annee),'remorques',S.editRemId),obj);showToast('Remorque modifiée');}
-  else{await fbAdd(collection(db,'campagnes',String(S.annee),'remorques'),obj);showToast('✓ '+caisses+' caisses — '+parc);}
+  if(S.editRemId){await updateDoc(doc(db,'campagnes',String(S.annee),'remorques',S.editRemId),obj);showToast('Remorque modifiée');}
+  else{await addDoc(collection(db,'campagnes',String(S.annee),'remorques'),obj);showToast('✓ '+caisses+' caisses — '+parc);}
   cancelRem();
 }
 window.cancelRem=function(){
@@ -836,7 +815,7 @@ window.editBon=function(id){
 }
 window.confirmDeleteBon=function(id){
   showModal('Supprimer le bon','Confirmer la suppression de ce bon pressoir ?','Supprimer','btn-danger',async()=>{
-    await fbDelete(doc(db,'campagnes',String(S.annee),'bons',id));
+    await deleteDoc(doc(db,'campagnes',String(S.annee),'bons',id));
     showToast('Bon supprimé');
   });
 }
@@ -846,8 +825,8 @@ window.saveBon=async function(){
   const caisses=parseInt(document.getElementById('p-caisses').value),poids=parseFloat(document.getElementById('p-poids').value);
   if(!date||!caisses||!poids){showToast('Remplis tous les champs obligatoires');return;}
   const obj={exploit:e,date,pressoir,bon,caisses,poids};
-  if(S.editBonId){await fbUpdate(doc(db,'campagnes',String(S.annee),'bons',S.editBonId),obj);showToast('Bon modifié · '+(poids/caisses).toFixed(1)+' kg/caisse');}
-  else{await fbAdd(collection(db,'campagnes',String(S.annee),'bons'),obj);showToast('Bon enregistré · '+(poids/caisses).toFixed(1)+' kg/caisse');}
+  if(S.editBonId){await updateDoc(doc(db,'campagnes',String(S.annee),'bons',S.editBonId),obj);showToast('Bon modifié · '+(poids/caisses).toFixed(1)+' kg/caisse');}
+  else{await addDoc(collection(db,'campagnes',String(S.annee),'bons'),obj);showToast('Bon enregistré · '+(poids/caisses).toFixed(1)+' kg/caisse');}
   cancelBon();
 }
 window.cancelBon=function(){
@@ -1077,8 +1056,8 @@ async function nouvelleCampagne(prochaine){
   const src=S.campagnes[anneeRef];
   const newCamp={rendement:src.rendement,poidsPrev:src.poidsPrev,active:true,exploitations:JSON.parse(JSON.stringify(src.exploitations))};
   src.active=false;
-  await fbSet(doc(db,'campagnes',String(anneeRef)),src);
-  await fbSet(doc(db,'campagnes',String(prochaine)),newCamp);
+  await setDoc(doc(db,'campagnes',String(anneeRef)),src);
+  await setDoc(doc(db,'campagnes',String(prochaine)),newCamp);
   S.campagnes[prochaine]=newCamp; S.annee=prochaine; S.campagne=newCamp;
   S.exploit=Object.keys(newCamp.exploitations)[0];
   S.saisieExploit=S.exploit; S.pressExploit=S.exploit;
@@ -1092,8 +1071,8 @@ window.confirmSupprimerCampagne=function(a){
 }
 async function supprimerCampagne(a){
   const [rs,bs]=await Promise.all([getDocs(collection(db,'campagnes',String(a),'remorques')),getDocs(collection(db,'campagnes',String(a),'bons'))]);
-  await Promise.all([...rs.docs.map(d=>fbDelete(d.ref)),...bs.docs.map(d=>fbDelete(d.ref))]);
-  await fbDelete(doc(db,'campagnes',String(a)));
+  await Promise.all([...rs.docs.map(d=>deleteDoc(d.ref)),...bs.docs.map(d=>deleteDoc(d.ref))]);
+  await deleteDoc(doc(db,'campagnes',String(a)));
   delete S.campagnes[a];
   const annees=Object.keys(S.campagnes).map(Number).sort((a,b)=>b-a);
   if(!annees.length){await creerCampagneDefaut(new Date().getFullYear());}
@@ -1148,7 +1127,7 @@ window.saveExploitParams=async function(){
   const poids=parseFloat(document.getElementById('params-poids').value)||41;
   camp().exploitations[e].rendement=rdt;
   camp().exploitations[e].poidsPrev=poids;
-  await fbSet(doc(db,'campagnes',String(S.annee)),camp());
+  await setDoc(doc(db,'campagnes',String(S.annee)),camp());
   renderParamsSim(e);
   renderTableau();
 }
@@ -1220,7 +1199,7 @@ window.confirmDeleteParc=function(i){
 async function deleteParc(i){
   const nom=camp().exploitations[S.subExploit].parcelles[i].nom;
   camp().exploitations[S.subExploit].parcelles.splice(i,1);
-  await fbSet(doc(db,'campagnes',String(S.annee)),camp());
+  await setDoc(doc(db,'campagnes',String(S.annee)),camp());
   if(S.editParcIdx===i) resetParcForm();
   renderParcList(); renderParcSummary(); showToast('"'+nom+'" supprimée');
 }
@@ -1237,7 +1216,7 @@ window.saveParc=async function(){
     if(parcs.find(p=>p.nom.toLowerCase()===nom.toLowerCase())){showToast('Ce nom existe déjà');return;}
     parcs.push({nom,surface,obj}); showToast('"'+nom+'" ajoutée');
   }
-  await fbSet(doc(db,'campagnes',String(S.annee)),camp());
+  await setDoc(doc(db,'campagnes',String(S.annee)),camp());
   resetParcForm(); renderParcList(); renderParcSummary();
 }
 window.resetParcForm=function(){
@@ -1292,7 +1271,7 @@ window.saveExploitation=async function(){
     nom, rendement:rdt, poidsPrev:poids,
     pressoirs:[], parcelles:[], commentaires:{}
   };
-  await fbSet(doc(db,'campagnes',String(S.annee)),camp());
+  await setDoc(doc(db,'campagnes',String(S.annee)),camp());
   document.getElementById('exploit-nom').value='';
   renderExploitList(); renderConfig(); buildSaisieSelects();
   showToast('"'+nom+'" ajoutée — ajoutez maintenant ses parcelles et pressoirs');
@@ -1311,7 +1290,7 @@ window.confirmDeleteExploitation=function(e){
 async function deleteExploitation(e){
   const nom=camp().exploitations[e].nom;
   delete camp().exploitations[e];
-  await fbSet(doc(db,'campagnes',String(S.annee)),camp());
+  await setDoc(doc(db,'campagnes',String(S.annee)),camp());
   // Si c'était l'exploit active, basculer sur la première disponible
   if(S.exploit===e){
     const remaining=Object.keys(camp().exploitations);
@@ -1350,7 +1329,7 @@ window.saveComment=function(){
     camp().exploitations[e].commentaires.qualite=document.getElementById('comment-qualite').value;
     camp().exploitations[e].commentaires.incidents=document.getElementById('comment-incidents').value;
     camp().exploitations[e].commentaires.observations=document.getElementById('comment-observations').value;
-    await fbSet(doc(db,'campagnes',String(S.annee)),camp());
+    await setDoc(doc(db,'campagnes',String(S.annee)),camp());
     document.getElementById('comment-save-hint').textContent='✓ Enregistré';
     setTimeout(()=>document.getElementById('comment-save-hint').textContent='',2000);
   },800);
@@ -1380,7 +1359,7 @@ window.savePressoir=async function(){
   const pressoirs=camp().exploitations[S.subExploit].pressoirs;
   if(pressoirs.find(p=>p.toUpperCase()===nom)){showToast('Ce pressoir existe déjà');return;}
   pressoirs.push(nom);
-  await fbSet(doc(db,'campagnes',String(S.annee)),camp());
+  await setDoc(doc(db,'campagnes',String(S.annee)),camp());
   document.getElementById('pressoir-nom').value='';
   renderPressoirList(); showToast('"'+nom+'" ajouté');
 }
@@ -1389,7 +1368,7 @@ window.confirmDeletePressoir=function(i,nom){
 }
 async function deletePressoir(i,nom){
   camp().exploitations[S.subExploit].pressoirs.splice(i,1);
-  await fbSet(doc(db,'campagnes',String(S.annee)),camp());
+  await setDoc(doc(db,'campagnes',String(S.annee)),camp());
   renderPressoirList(); showToast('"'+nom+'" supprimé');
 }
 
@@ -1419,7 +1398,7 @@ window.saveQuickRem=async function(){
   const caisses=parseInt(document.getElementById('q-caisses').value);
   if(!caisses||caisses<=0){showToast('Nombre de caisses invalide');return;}
   const dt=nowDT();
-  await fbAdd(collection(db,'campagnes',String(S.annee),'remorques'),{exploit:e,parcelle:parc,caisses,dt});
+  await addDoc(collection(db,'campagnes',String(S.annee),'remorques'),{exploit:e,parcelle:parc,caisses,dt});
   document.getElementById('quick-modal').classList.remove('active');
   showToast('✓ '+caisses+' caisses — '+parc);
 }
