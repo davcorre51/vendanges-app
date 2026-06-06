@@ -439,7 +439,7 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD0YXEmLDHiQ9GeXPMIenzaLec26JwCb2g",
@@ -451,9 +451,7 @@ const firebaseConfig = {
 };
 
 const fbApp = initializeApp(firebaseConfig);
-const db = initializeFirestore(fbApp, {
-  localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
-});
+const db = getFirestore(fbApp);
 
 window.addEventListener('online',()=>{document.getElementById('offline-banner').classList.remove('show');showToast('✓ Connexion rétablie');});
 window.addEventListener('offline',()=>{document.getElementById('offline-banner').classList.add('show');});
@@ -1259,7 +1257,7 @@ window.saveExploitation=async function(){
   const nom=document.getElementById('exploit-nom').value.trim().toUpperCase();
   const rdt=parseInt(document.getElementById('exploit-rdt').value)||9120;
   const poids=parseFloat(document.getElementById('exploit-poids').value)||41;
-  if(!nom){showToast('Saisis un nom d'exploitation');return;}
+  if(!nom){showToast("Saisis un nom d'exploitation");return;}
   // Générer une clé unique
   const existingKeys=Object.keys(camp().exploitations);
   const existingNoms=Object.values(camp().exploitations).map(e=>e.nom.toUpperCase());
@@ -1281,7 +1279,7 @@ window.saveExploitation=async function(){
 window.confirmDeleteExploitation=function(e){
   const nom=camp().exploitations[e].nom;
   showModal(
-    'Supprimer l'exploitation',
+    "Supprimer l'exploitation",
     `Retirer "${nom}" de la campagne ${S.annee} ? Toutes ses données dans les campagnes précédentes sont conservées. Les remorques et bons déjà enregistrés cette année restent dans Firebase.`,
     'Supprimer','btn-danger',
     ()=>deleteExploitation(e)
