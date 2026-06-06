@@ -911,13 +911,11 @@ function renderExport(){
     </div>
     <div class="export-row"><button class="export-btn" onclick="exportRecap()"><i class="ti ti-table-export" style="font-size:15px"></i> Récapitulatif parcelles</button></div>
     <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
-      <p style="font-size:12px;color:var(--text2);margin-bottom:8px">Rapport PDF de fin de campagne — une page par exploitation.</p>
-      <div class="export-row" id="pdf-btns"></div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:8px">Rapport PDF de fin de campagne.</p>
+      <div class="export-row">
+        <button class="export-btn" id="pdf-btn" onclick="genererPDF(S.exploit)"><i class="ti ti-file-type-pdf" style="font-size:15px;color:#991b1b"></i> Générer le PDF</button>
+      </div>
     </div>`;
-  // Boutons PDF par exploitation
-  document.getElementById('pdf-btns').innerHTML=Object.entries(camp().exploitations).map(([e,d])=>
-    `<button class="export-btn" onclick="genererPDF('${e}')"><i class="ti ti-file-type-pdf" style="font-size:15px;color:#991b1b"></i> PDF ${d.nom}</button>`
-  ).join('');
 }
 window.exportRemorques=function(){
   let csv='Exploitation;Parcelle;Caisses;Date;Heure\n';
