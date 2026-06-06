@@ -121,6 +121,20 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
 .accord-chevron{font-size:16px;color:var(--text3);transition:transform 0.25s;flex-shrink:0}
 .accord-chevron.open{transform:rotate(180deg)}
 .etab-scroll{flex-shrink:0}
+/* Bouton flottant saisie rapide */
+.fab{position:fixed;bottom:76px;right:16px;width:52px;height:52px;background:var(--accent);color:#fff;border:none;border-radius:50%;font-size:26px;cursor:pointer;box-shadow:0 4px 12px rgba(45,90,39,0.4);z-index:49;display:flex;align-items:center;justify-content:center;transition:transform 0.15s,box-shadow 0.15s}
+.fab:active{transform:scale(0.93);box-shadow:0 2px 6px rgba(45,90,39,0.3)}
+.fab-label{position:fixed;bottom:134px;right:16px;background:var(--text);color:#fff;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;z-index:49;pointer-events:none;opacity:0;transition:opacity 0.2s;white-space:nowrap}
+/* Modal saisie rapide */
+.quick-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:150;align-items:flex-end;justify-content:center}
+.quick-modal.active{display:flex}
+.quick-panel{background:var(--surface);border-radius:var(--radius) var(--radius) 0 0;padding:20px 16px 30px;width:100%;max-width:430px;box-shadow:0 -4px 20px rgba(0,0,0,0.15);animation:slideUp 0.25s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.quick-title{font-size:16px;font-weight:600;color:var(--text);margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
+.quick-close{background:none;border:none;font-size:22px;color:var(--text3);cursor:pointer;padding:0;line-height:1}
+/* Offline robuste */
+.sync-badge{display:none;position:fixed;top:60px;right:12px;background:var(--amber);color:#fff;font-size:10px;font-weight:600;padding:3px 8px;border-radius:10px;z-index:48;font-family:'DM Mono',monospace}
+.sync-badge.show{display:block}
 .loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;gap:12px;color:var(--text2);font-size:13px}
 .spinner{width:28px;height:28px;border:2px solid var(--bg3);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -264,6 +278,9 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
       </div>
       <div class="card">
         <div class="card-title">Exploitations & Parcelles</div>
+        <div style="margin-bottom:10px">
+          <button class="btn btn-secondary" style="margin-top:0" onclick="openGererExploitations()"><i class="ti ti-building-estate"></i> Gérer les exploitations</button>
+        </div>
         <div id="cfg-exploits"></div>
       </div>
     </div>
@@ -343,6 +360,25 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
   </div>
 </div>
 
+<!-- SOUS-ÉCRAN EXPLOITATIONS -->
+<div class="subscreen" id="sub-exploitations">
+  <div class="subscreen-topbar">
+    <button class="back-btn" onclick="closeSubscreen('sub-exploitations')"><i class="ti ti-arrow-left"></i> Config</button>
+    <div><div class="subscreen-title">Exploitations</div><div class="subscreen-sub" id="sub-exploit-sub"></div></div>
+  </div>
+  <div class="subscreen-body">
+    <div class="alert info" style="margin-bottom:10px"><i class="ti ti-info-circle"></i> Supprimer une exploitation la retire de la campagne en cours uniquement. Toutes les données des années précédentes sont conservées.</div>
+    <div class="card"><div class="card-title">Exploitations actives</div><div id="exploit-list"></div></div>
+    <div class="card">
+      <div class="card-title">Ajouter une exploitation</div>
+      <div class="form-group"><label class="form-label">Nom de l'exploitation</label><input type="text" id="exploit-nom" placeholder="ex : MARTIN"></div>
+      <div class="form-group"><label class="form-label">Appellation (kg/ha)</label><input type="number" id="exploit-rdt" placeholder="ex : 9120"></div>
+      <div class="form-group"><label class="form-label">Poids moyen caisse prévisionnel (kg)</label><input type="number" id="exploit-poids" placeholder="ex : 41"></div>
+      <button class="btn btn-primary" onclick="saveExploitation()"><i class="ti ti-plus"></i> Ajouter</button>
+    </div>
+  </div>
+</div>
+
 <!-- SOUS-ÉCRAN COMMENTAIRES -->
 <div class="subscreen" id="sub-commentaires">
   <div class="subscreen-topbar">
@@ -383,6 +419,27 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
   </div>
 </div>
 
+<!-- BOUTON FLOTTANT -->
+<button class="fab" id="fab-btn" onclick="openQuickSaisie()" aria-label="Saisie rapide remorque">+</button>
+<div class="fab-label" id="fab-label">Nouvelle remorque</div>
+
+<!-- MODAL SAISIE RAPIDE -->
+<div class="quick-modal" id="quick-modal" onclick="closeQuickSaisie(event)">
+  <div class="quick-panel" onclick="event.stopPropagation()">
+    <div class="quick-title">
+      <span>🚜 Nouvelle remorque</span>
+      <button class="quick-close" onclick="closeQuickSaisie()">×</button>
+    </div>
+    <div class="form-group"><label class="form-label">Exploitation</label><select id="q-exploit" onchange="updateQuickParc()"></select></div>
+    <div class="form-group"><label class="form-label">Parcelle</label><select id="q-parcelle"></select></div>
+    <div class="form-group"><label class="form-label">Nombre de caisses</label><input type="number" id="q-caisses" placeholder="ex : 32" min="1" inputmode="numeric"></div>
+    <button class="btn btn-primary" onclick="saveQuickRem()"><i class="ti ti-check"></i> Enregistrer</button>
+  </div>
+</div>
+
+<!-- BADGE SYNC OFFLINE -->
+<div class="sync-badge" id="sync-badge">⏳ Synchro en attente</div>
+
 <div class="toast" id="toast"></div>
 
 <script type="module">
@@ -402,8 +459,24 @@ const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 enableIndexedDbPersistence(db).catch(()=>{});
 
-window.addEventListener('online',()=>{document.getElementById('offline-banner').classList.remove('show');showToast('✓ Connexion rétablie');});
-window.addEventListener('offline',()=>{document.getElementById('offline-banner').classList.add('show');});
+let pendingOps = 0;
+function trackPending(delta){
+  pendingOps=Math.max(0,pendingOps+delta);
+  document.getElementById('sync-badge').classList.toggle('show', pendingOps>0);
+}
+async function fbSet(ref, data){ trackPending(1); try{ await setDoc(ref,data); }finally{ trackPending(-1); } }
+async function fbAdd(ref, data){ trackPending(1); try{ await addDoc(ref,data); }finally{ trackPending(-1); } }
+async function fbUpdate(ref, data){ trackPending(1); try{ await updateDoc(ref,data); }finally{ trackPending(-1); } }
+async function fbDelete(ref){ trackPending(1); try{ await deleteDoc(ref); }finally{ trackPending(-1); } }
+
+window.addEventListener('online',()=>{
+  document.getElementById('offline-banner').classList.remove('show');
+  showToast('✓ Connexion rétablie — synchronisation en cours');
+});
+window.addEventListener('offline',()=>{
+  document.getElementById('offline-banner').classList.add('show');
+  showToast('📵 Mode hors-ligne — les saisies sont conservées');
+});
 
 // ── ÉTAT ──────────────────────────────────────────────────────
 let S = {
@@ -523,6 +596,7 @@ window.showScreen=function(name){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('screen-'+name).classList.add('active');
   document.getElementById('nav-'+name).classList.add('active');
+  updateFab(name);
   ({
     tableau:renderTableau,
     saisie:()=>{buildSaisieSelects();renderHistRem();},
@@ -685,7 +759,7 @@ window.editRem=function(id){
 }
 window.confirmDeleteRem=function(id){
   showModal('Supprimer la remorque','Confirmer la suppression ? Action irréversible.','Supprimer','btn-danger',async()=>{
-    await deleteDoc(doc(db,'campagnes',String(S.annee),'remorques',id));
+    await fbDelete(doc(db,'campagnes',String(S.annee),'remorques',id));
     showToast('Remorque supprimée');
   });
 }
@@ -695,8 +769,8 @@ window.saveRem=async function(){
   if(!caisses||caisses<=0){showToast('Nombre de caisses invalide');return;}
   if(!dt){showToast('Date et heure requises');return;}
   const obj={exploit:e,parcelle:parc,caisses,dt};
-  if(S.editRemId){await updateDoc(doc(db,'campagnes',String(S.annee),'remorques',S.editRemId),obj);showToast('Remorque modifiée');}
-  else{await addDoc(collection(db,'campagnes',String(S.annee),'remorques'),obj);showToast('✓ '+caisses+' caisses — '+parc);}
+  if(S.editRemId){await fbUpdate(doc(db,'campagnes',String(S.annee),'remorques',S.editRemId),obj);showToast('Remorque modifiée');}
+  else{await fbAdd(collection(db,'campagnes',String(S.annee),'remorques'),obj);showToast('✓ '+caisses+' caisses — '+parc);}
   cancelRem();
 }
 window.cancelRem=function(){
@@ -762,7 +836,7 @@ window.editBon=function(id){
 }
 window.confirmDeleteBon=function(id){
   showModal('Supprimer le bon','Confirmer la suppression de ce bon pressoir ?','Supprimer','btn-danger',async()=>{
-    await deleteDoc(doc(db,'campagnes',String(S.annee),'bons',id));
+    await fbDelete(doc(db,'campagnes',String(S.annee),'bons',id));
     showToast('Bon supprimé');
   });
 }
@@ -772,8 +846,8 @@ window.saveBon=async function(){
   const caisses=parseInt(document.getElementById('p-caisses').value),poids=parseFloat(document.getElementById('p-poids').value);
   if(!date||!caisses||!poids){showToast('Remplis tous les champs obligatoires');return;}
   const obj={exploit:e,date,pressoir,bon,caisses,poids};
-  if(S.editBonId){await updateDoc(doc(db,'campagnes',String(S.annee),'bons',S.editBonId),obj);showToast('Bon modifié · '+(poids/caisses).toFixed(1)+' kg/caisse');}
-  else{await addDoc(collection(db,'campagnes',String(S.annee),'bons'),obj);showToast('Bon enregistré · '+(poids/caisses).toFixed(1)+' kg/caisse');}
+  if(S.editBonId){await fbUpdate(doc(db,'campagnes',String(S.annee),'bons',S.editBonId),obj);showToast('Bon modifié · '+(poids/caisses).toFixed(1)+' kg/caisse');}
+  else{await fbAdd(collection(db,'campagnes',String(S.annee),'bons'),obj);showToast('Bon enregistré · '+(poids/caisses).toFixed(1)+' kg/caisse');}
   cancelBon();
 }
 window.cancelBon=function(){
@@ -857,7 +931,15 @@ function renderExport(){
       <button class="export-btn" onclick="exportRemorques()"><i class="ti ti-table-export" style="font-size:15px"></i> Remorques</button>
       <button class="export-btn" onclick="exportBons()"><i class="ti ti-table-export" style="font-size:15px"></i> Bons pressoir</button>
     </div>
-    <div class="export-row"><button class="export-btn" onclick="exportRecap()"><i class="ti ti-table-export" style="font-size:15px"></i> Récapitulatif parcelles</button></div>`;
+    <div class="export-row"><button class="export-btn" onclick="exportRecap()"><i class="ti ti-table-export" style="font-size:15px"></i> Récapitulatif parcelles</button></div>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+      <p style="font-size:12px;color:var(--text2);margin-bottom:8px">Rapport PDF de fin de campagne — une page par exploitation.</p>
+      <div class="export-row" id="pdf-btns"></div>
+    </div>`;
+  // Boutons PDF par exploitation
+  document.getElementById('pdf-btns').innerHTML=Object.entries(camp().exploitations).map(([e,d])=>
+    `<button class="export-btn" onclick="genererPDF('${e}')"><i class="ti ti-file-type-pdf" style="font-size:15px;color:#991b1b"></i> PDF ${d.nom}</button>`
+  ).join('');
 }
 window.exportRemorques=function(){
   let csv='Exploitation;Parcelle;Caisses;Date;Heure\n';
@@ -995,8 +1077,8 @@ async function nouvelleCampagne(prochaine){
   const src=S.campagnes[anneeRef];
   const newCamp={rendement:src.rendement,poidsPrev:src.poidsPrev,active:true,exploitations:JSON.parse(JSON.stringify(src.exploitations))};
   src.active=false;
-  await setDoc(doc(db,'campagnes',String(anneeRef)),src);
-  await setDoc(doc(db,'campagnes',String(prochaine)),newCamp);
+  await fbSet(doc(db,'campagnes',String(anneeRef)),src);
+  await fbSet(doc(db,'campagnes',String(prochaine)),newCamp);
   S.campagnes[prochaine]=newCamp; S.annee=prochaine; S.campagne=newCamp;
   S.exploit=Object.keys(newCamp.exploitations)[0];
   S.saisieExploit=S.exploit; S.pressExploit=S.exploit;
@@ -1010,8 +1092,8 @@ window.confirmSupprimerCampagne=function(a){
 }
 async function supprimerCampagne(a){
   const [rs,bs]=await Promise.all([getDocs(collection(db,'campagnes',String(a),'remorques')),getDocs(collection(db,'campagnes',String(a),'bons'))]);
-  await Promise.all([...rs.docs.map(d=>deleteDoc(d.ref)),...bs.docs.map(d=>deleteDoc(d.ref))]);
-  await deleteDoc(doc(db,'campagnes',String(a)));
+  await Promise.all([...rs.docs.map(d=>fbDelete(d.ref)),...bs.docs.map(d=>fbDelete(d.ref))]);
+  await fbDelete(doc(db,'campagnes',String(a)));
   delete S.campagnes[a];
   const annees=Object.keys(S.campagnes).map(Number).sort((a,b)=>b-a);
   if(!annees.length){await creerCampagneDefaut(new Date().getFullYear());}
@@ -1066,7 +1148,7 @@ window.saveExploitParams=async function(){
   const poids=parseFloat(document.getElementById('params-poids').value)||41;
   camp().exploitations[e].rendement=rdt;
   camp().exploitations[e].poidsPrev=poids;
-  await setDoc(doc(db,'campagnes',String(S.annee)),camp());
+  await fbSet(doc(db,'campagnes',String(S.annee)),camp());
   renderParamsSim(e);
   renderTableau();
 }
@@ -1138,7 +1220,7 @@ window.confirmDeleteParc=function(i){
 async function deleteParc(i){
   const nom=camp().exploitations[S.subExploit].parcelles[i].nom;
   camp().exploitations[S.subExploit].parcelles.splice(i,1);
-  await setDoc(doc(db,'campagnes',String(S.annee)),camp());
+  await fbSet(doc(db,'campagnes',String(S.annee)),camp());
   if(S.editParcIdx===i) resetParcForm();
   renderParcList(); renderParcSummary(); showToast('"'+nom+'" supprimée');
 }
@@ -1155,7 +1237,7 @@ window.saveParc=async function(){
     if(parcs.find(p=>p.nom.toLowerCase()===nom.toLowerCase())){showToast('Ce nom existe déjà');return;}
     parcs.push({nom,surface,obj}); showToast('"'+nom+'" ajoutée');
   }
-  await setDoc(doc(db,'campagnes',String(S.annee)),camp());
+  await fbSet(doc(db,'campagnes',String(S.annee)),camp());
   resetParcForm(); renderParcList(); renderParcSummary();
 }
 window.resetParcForm=function(){
@@ -1168,6 +1250,81 @@ window.resetParcForm=function(){
 }
 
 // ── GESTION PRESSOIRS ─────────────────────────────────────────
+window.openGererExploitations=function(){
+  renderExploitList();
+  document.getElementById('sub-exploit-sub').textContent=Object.keys(camp().exploitations).length+' exploitation(s) — campagne '+S.annee;
+  document.getElementById('exploit-nom').value='';
+  document.getElementById('exploit-rdt').value=camp().rendement||9120;
+  document.getElementById('exploit-poids').value=camp().poidsPrev||41;
+  openSubscreen('sub-exploitations');
+}
+
+function renderExploitList(){
+  const exploits=Object.entries(camp().exploitations);
+  document.getElementById('exploit-list').innerHTML=!exploits.length
+    ?'<div style="padding:12px;text-align:center;font-size:13px;color:var(--text3)">Aucune exploitation.</div>'
+    :exploits.map(([e,d])=>`
+      <div class="parc-row">
+        <div class="parc-info">
+          <div class="parc-nom">${d.nom}</div>
+          <div class="parc-detail">${d.parcelles.length} parcelles · ${d.parcelles.reduce((a,p)=>a+p.surface,0).toFixed(2)} ha · ${d.rendement||camp().rendement} kg/ha</div>
+        </div>
+        <button class="icon-btn danger" onclick="confirmDeleteExploitation('${e}')" aria-label="Supprimer ${d.nom}"><i class="ti ti-trash" style="font-size:15px"></i></button>
+      </div>`).join('');
+  document.getElementById('sub-exploit-sub').textContent=exploits.length+' exploitation(s) — campagne '+S.annee;
+}
+
+window.saveExploitation=async function(){
+  if(!camp().active){showToast('Campagne terminée — lecture seule');return;}
+  const nom=document.getElementById('exploit-nom').value.trim().toUpperCase();
+  const rdt=parseInt(document.getElementById('exploit-rdt').value)||9120;
+  const poids=parseFloat(document.getElementById('exploit-poids').value)||41;
+  if(!nom){showToast('Saisis un nom d'exploitation');return;}
+  // Générer une clé unique
+  const existingKeys=Object.keys(camp().exploitations);
+  const existingNoms=Object.values(camp().exploitations).map(e=>e.nom.toUpperCase());
+  if(existingNoms.includes(nom)){showToast('Cette exploitation existe déjà');return;}
+  // Clé = initiales ou 2 premières lettres
+  let key=nom.replace(/[^A-Z]/g,'').substring(0,3);
+  let i=2; const baseKey=key;
+  while(existingKeys.includes(key)){key=baseKey+i;i++;}
+  camp().exploitations[key]={
+    nom, rendement:rdt, poidsPrev:poids,
+    pressoirs:[], parcelles:[], commentaires:{}
+  };
+  await fbSet(doc(db,'campagnes',String(S.annee)),camp());
+  document.getElementById('exploit-nom').value='';
+  renderExploitList(); renderConfig(); buildSaisieSelects();
+  showToast('"'+nom+'" ajoutée — ajoutez maintenant ses parcelles et pressoirs');
+}
+
+window.confirmDeleteExploitation=function(e){
+  const nom=camp().exploitations[e].nom;
+  showModal(
+    'Supprimer l'exploitation',
+    `Retirer "${nom}" de la campagne ${S.annee} ? Toutes ses données dans les campagnes précédentes sont conservées. Les remorques et bons déjà enregistrés cette année restent dans Firebase.`,
+    'Supprimer','btn-danger',
+    ()=>deleteExploitation(e)
+  );
+}
+
+async function deleteExploitation(e){
+  const nom=camp().exploitations[e].nom;
+  delete camp().exploitations[e];
+  await fbSet(doc(db,'campagnes',String(S.annee)),camp());
+  // Si c'était l'exploit active, basculer sur la première disponible
+  if(S.exploit===e){
+    const remaining=Object.keys(camp().exploitations);
+    if(remaining.length>0){
+      S.exploit=remaining[0];
+      S.saisieExploit=S.exploit;
+      S.pressExploit=S.exploit;
+    }
+  }
+  renderExploitList(); renderConfig(); buildSaisieSelects(); buildEtabs('etabs-tableau'); renderTableau();
+  showToast('"'+nom+'" retirée de la campagne '+S.annee);
+}
+
 window.openCommentaires=function(e){
   S.subExploit=e;
   const d=camp().exploitations[e];
@@ -1193,7 +1350,7 @@ window.saveComment=function(){
     camp().exploitations[e].commentaires.qualite=document.getElementById('comment-qualite').value;
     camp().exploitations[e].commentaires.incidents=document.getElementById('comment-incidents').value;
     camp().exploitations[e].commentaires.observations=document.getElementById('comment-observations').value;
-    await setDoc(doc(db,'campagnes',String(S.annee)),camp());
+    await fbSet(doc(db,'campagnes',String(S.annee)),camp());
     document.getElementById('comment-save-hint').textContent='✓ Enregistré';
     setTimeout(()=>document.getElementById('comment-save-hint').textContent='',2000);
   },800);
@@ -1223,7 +1380,7 @@ window.savePressoir=async function(){
   const pressoirs=camp().exploitations[S.subExploit].pressoirs;
   if(pressoirs.find(p=>p.toUpperCase()===nom)){showToast('Ce pressoir existe déjà');return;}
   pressoirs.push(nom);
-  await setDoc(doc(db,'campagnes',String(S.annee)),camp());
+  await fbSet(doc(db,'campagnes',String(S.annee)),camp());
   document.getElementById('pressoir-nom').value='';
   renderPressoirList(); showToast('"'+nom+'" ajouté');
 }
@@ -1232,11 +1389,198 @@ window.confirmDeletePressoir=function(i,nom){
 }
 async function deletePressoir(i,nom){
   camp().exploitations[S.subExploit].pressoirs.splice(i,1);
-  await setDoc(doc(db,'campagnes',String(S.annee)),camp());
+  await fbSet(doc(db,'campagnes',String(S.annee)),camp());
   renderPressoirList(); showToast('"'+nom+'" supprimé');
 }
 
 // ── TOAST ─────────────────────────────────────────────────────
+// ── SAISIE RAPIDE ────────────────────────────────────────────
+window.openQuickSaisie=function(){
+  if(!S.campagne) return;
+  const exploits=Object.keys(camp().exploitations);
+  document.getElementById('q-exploit').innerHTML=exploits.map(e=>`<option value="${e}">${camp().exploitations[e].nom}</option>`).join('');
+  document.getElementById('q-exploit').value=S.exploit;
+  updateQuickParc();
+  document.getElementById('q-caisses').value='';
+  document.getElementById('quick-modal').classList.add('active');
+  setTimeout(()=>document.getElementById('q-caisses').focus(),300);
+}
+window.closeQuickSaisie=function(e){
+  if(e&&e.target!==document.getElementById('quick-modal')) return;
+  document.getElementById('quick-modal').classList.remove('active');
+}
+window.updateQuickParc=function(){
+  const e=document.getElementById('q-exploit').value;
+  document.getElementById('q-parcelle').innerHTML=camp().exploitations[e].parcelles.map(p=>`<option>${p.nom}</option>`).join('');
+}
+window.saveQuickRem=async function(){
+  const e=document.getElementById('q-exploit').value;
+  const parc=document.getElementById('q-parcelle').value;
+  const caisses=parseInt(document.getElementById('q-caisses').value);
+  if(!caisses||caisses<=0){showToast('Nombre de caisses invalide');return;}
+  const dt=nowDT();
+  await fbAdd(collection(db,'campagnes',String(S.annee),'remorques'),{exploit:e,parcelle:parc,caisses,dt});
+  document.getElementById('quick-modal').classList.remove('active');
+  showToast('✓ '+caisses+' caisses — '+parc);
+}
+
+// ── FAB — masquer sur onglets Saisie/Pressoir ────────────────
+function updateFab(screen){
+  const fab=document.getElementById('fab-btn');
+  const label=document.getElementById('fab-label');
+  const hide=['saisie','pressoir','histo','config'];
+  fab.style.display=hide.includes(screen)?'none':'flex';
+  label.style.display=hide.includes(screen)?'none':'block';
+}
+
+// ── PDF FIN DE CAMPAGNE ───────────────────────────────────────
+window.genererPDF=async function(exploitKey){
+  const c=camp();
+  const e=exploitKey||S.exploit;
+  const d=c.exploitations[e];
+  const pm=poidsReel(e);
+  const rems=Object.values(S.remorques).filter(r=>r.exploit===e);
+  const bons=Object.values(S.bons).filter(b=>b.exploit===e);
+  const totS=d.parcelles.reduce((a,p)=>a+totSorties(e,p.nom),0);
+  const totO=d.parcelles.reduce((a,p)=>a+objDynamique(e,p),0);
+  const totP=bons.reduce((a,b)=>a+b.poids,0);
+  const totC=bons.reduce((a,b)=>a+b.caisses,0);
+  const surf=d.parcelles.reduce((a,p)=>a+p.surface,0);
+  const rdtReel=surf>0&&totS>0?Math.round(totS*pm.val/surf):0;
+  const comm=d.commentaires||{};
+
+  // Lignes parcelles
+  const lignesParc=d.parcelles.map(p=>{
+    const s=totSorties(e,p.nom);
+    const obj=objDynamique(e,p);
+    const ec=s-obj;
+    const rha=s>0?Math.round(s*pm.val/p.surface):0;
+    return `<tr>
+      <td>${p.nom}</td>
+      <td style="text-align:right">${p.surface.toFixed(2)}</td>
+      <td style="text-align:right">${obj}</td>
+      <td style="text-align:right">${s}</td>
+      <td style="text-align:right;color:${ec>0?'#2d5a27':ec<0?'#991b1b':'#1c1917'}">${ec>0?'+':''}${ec}</td>
+      <td style="text-align:right">${s>0?rha.toLocaleString('fr-FR'):'—'}</td>
+    </tr>`;
+  }).join('');
+
+  // Lignes bons pressoir
+  const lignesBons=bons.sort((a,b)=>a.date.localeCompare(b.date)).map(b=>`<tr>
+    <td>${b.date}</td>
+    <td>${b.bon||'—'}</td>
+    <td>${b.pressoir}</td>
+    <td style="text-align:right">${b.caisses}</td>
+    <td style="text-align:right">${b.poids.toLocaleString('fr-FR')}</td>
+    <td style="text-align:right">${b.caisses>0?(b.poids/b.caisses).toFixed(2):'—'}</td>
+  </tr>`).join('');
+
+  // Lignes remorques
+  const remSort=rems.sort((a,b)=>a.dt.localeCompare(b.dt));
+  const lignesRem=remSort.map(r=>{
+    const dt=new Date(r.dt);
+    return `<tr>
+      <td>${dt.toLocaleDateString('fr-FR')}</td>
+      <td>${dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</td>
+      <td>${r.parcelle}</td>
+      <td style="text-align:right">${r.caisses}</td>
+    </tr>`;
+  }).join('');
+
+  // Commentaires
+  const etiq=[['meteo','Météo'],['qualite','Qualité'],['incidents','Incidents'],['observations','Observations']];
+  const commHtml=etiq.filter(([k])=>comm[k]&&comm[k].trim()).map(([k,l])=>`
+    <div style="margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#6b6560;margin-bottom:3px">${l}</div>
+      <div style="font-size:12px;color:#1c1917;line-height:1.6;white-space:pre-wrap">${comm[k]}</div>
+    </div>`).join('');
+
+  const html=`<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<title>Rapport Vendanges ${S.annee} — ${d.nom}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:12px;color:#1c1917;padding:20px 28px}
+  h1{font-size:20px;font-weight:700;color:#2d5a27;margin-bottom:2px}
+  .subtitle{font-size:12px;color:#6b6560;margin-bottom:18px}
+  h2{font-size:13px;font-weight:700;color:#2d5a27;margin:20px 0 8px;padding-bottom:4px;border-bottom:2px solid #eaf3e8;text-transform:uppercase;letter-spacing:0.05em}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+  .stat{background:#f5f3ee;border-radius:8px;padding:10px 12px;border:1px solid #e3dfd6}
+  .stat-label{font-size:9px;color:#9c9590;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:3px}
+  .stat-val{font-size:18px;font-weight:700;color:#1c1917}
+  .stat-val.green{color:#2d5a27}.stat-val.blue{color:#1e3a5f}
+  table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:6px}
+  th{background:#f5f3ee;padding:6px 8px;text-align:left;font-weight:600;font-size:10px;color:#6b6560;text-transform:uppercase;letter-spacing:0.04em;border-bottom:2px solid #e3dfd6}
+  th:not(:first-child){text-align:right}
+  td{padding:5px 8px;border-bottom:1px solid #f0ede8;vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  tr.total td{font-weight:700;background:#eaf3e8;border-top:2px solid #2d5a27}
+  .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700;text-transform:uppercase}
+  .badge.green{background:#eaf3e8;color:#2d5a27}
+  .badge.grey{background:#f1efe8;color:#6b6560}
+  .poids-info{font-size:11px;color:#6b6560;margin-bottom:10px;padding:7px 10px;background:#fef3c7;border-radius:6px;border:1px solid #f59e0b}
+  .poids-info.reel{background:#eaf3e8;border-color:#2d5a27;color:#2d5a27}
+  .page-break{page-break-before:always;margin-top:20px}
+  .footer{margin-top:24px;padding-top:10px;border-top:1px solid #e3dfd6;font-size:10px;color:#9c9590;text-align:right}
+  @media print{body{padding:10px 15px}.page-break{page-break-before:always}}
+</style></head><body>
+
+<h1>🍇 Rapport de Vendanges ${S.annee}</h1>
+<div class="subtitle">${d.nom} — Généré le ${new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})}</div>
+
+<div class="stats">
+  <div class="stat"><div class="stat-label">Appellation</div><div class="stat-val blue">${rdtExploit(e).toLocaleString('fr-FR')}<span style="font-size:11px;font-weight:400"> kg/ha</span></div></div>
+  <div class="stat"><div class="stat-label">Caisses récoltées</div><div class="stat-val">${totS}<span style="font-size:11px;font-weight:400"> / ${totO}</span></div></div>
+  <div class="stat"><div class="stat-label">Poids total</div><div class="stat-val green">${totP.toLocaleString('fr-FR')}<span style="font-size:11px;font-weight:400"> kg</span></div></div>
+  <div class="stat"><div class="stat-label">Rdt réel</div><div class="stat-val green">${rdtReel>0?rdtReel.toLocaleString('fr-FR'):'—'}<span style="font-size:11px;font-weight:400"> kg/ha</span></div></div>
+</div>
+
+<div class="${pm.reel?'poids-info reel':'poids-info'}">
+  ${pm.reel?'✓ Poids réel calculé :':'⏳ Poids prévisionnel :'} <strong>${pm.val.toFixed(2)} kg/caisse</strong>
+  ${pm.reel?'('+totP.toLocaleString('fr-FR')+' kg / '+totC+' caisses pesées)':'(en attente des bons pressoir)'}
+</div>
+
+<h2>Synthèse par parcelle</h2>
+<table>
+  <thead><tr><th>Parcelle</th><th>Surface (ha)</th><th>Objectif</th><th>Sorties</th><th>Écart</th><th>Rdt (kg/ha)</th></tr></thead>
+  <tbody>${lignesParc}</tbody>
+  <tfoot><tr class="total">
+    <td>TOTAL</td>
+    <td style="text-align:right">${surf.toFixed(2)}</td>
+    <td style="text-align:right">${totO}</td>
+    <td style="text-align:right">${totS}</td>
+    <td style="text-align:right;color:${totS-totO>0?'#2d5a27':totS-totO<0?'#991b1b':'#1c1917'}">${totS-totO>0?'+':''}${totS-totO}</td>
+    <td style="text-align:right">${rdtReel>0?rdtReel.toLocaleString('fr-FR'):'—'}</td>
+  </tr></tfoot>
+</table>
+
+${commHtml?`<h2>Commentaires</h2><div style="padding:10px;background:#f5f3ee;border-radius:8px;border:1px solid #e3dfd6">${commHtml}</div>`:''}
+
+<div class="page-break">
+<h2>Annexe 1 — Bons pressoir (${bons.length} bons · ${totC} caisses · ${totP.toLocaleString('fr-FR')} kg)</h2>
+${bons.length>0?`<table>
+  <thead><tr><th>Date</th><th>N° Bon</th><th>Pressoir</th><th>Caisses</th><th>Poids (kg)</th><th>kg/caisse</th></tr></thead>
+  <tbody>${lignesBons}</tbody>
+  <tfoot><tr class="total"><td colspan="3">TOTAL</td><td style="text-align:right">${totC}</td><td style="text-align:right">${totP.toLocaleString('fr-FR')}</td><td style="text-align:right">${totC>0?(totP/totC).toFixed(2):'—'}</td></tr></tfoot>
+</table>`:'<p style="color:#9c9590;font-style:italic;padding:8px">Aucun bon pressoir enregistré.</p>'}
+
+<h2 style="margin-top:20px">Annexe 2 — Détail des remorques (${rems.length} sorties · ${totS} caisses)</h2>
+${rems.length>0?`<table>
+  <thead><tr><th>Date</th><th>Heure</th><th>Parcelle</th><th>Caisses</th></tr></thead>
+  <tbody>${lignesRem}</tbody>
+  <tfoot><tr class="total"><td colspan="3">TOTAL</td><td style="text-align:right">${totS}</td></tr></tfoot>
+</table>`:'<p style="color:#9c9590;font-style:italic;padding:8px">Aucune remorque enregistrée.</p>'}
+</div>
+
+<div class="footer">Vendanges ${S.annee} · ${d.nom} · Application Vendanges par davcorre51</div>
+</body></html>`;
+
+  const w=window.open('','_blank');
+  w.document.write(html);
+  w.document.close();
+  setTimeout(()=>w.print(),500);
+}
+
 window.showToast=function(msg){
   const t=document.getElementById('toast');
   t.textContent=msg; t.classList.add('show');
