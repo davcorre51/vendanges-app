@@ -915,7 +915,7 @@ function renderExport(){
     <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
       <p style="font-size:12px;color:var(--text2);margin-bottom:8px">Rapport PDF de fin de campagne.</p>
       <div class="export-row">
-        <button class="export-btn" id="pdf-btn" onclick="genererPDF(S.exploit)"><i class="ti ti-file-type-pdf" style="font-size:15px;color:#991b1b"></i> Générer le PDF</button>
+        <button class="export-btn" id="pdf-btn" onclick="genererPDFCourant()"><i class="ti ti-file-type-pdf" style="font-size:15px;color:#991b1b"></i> Générer le PDF</button>
       </div>
     </div>`;
 }
@@ -1412,6 +1412,10 @@ function updateFab(screen){
 }
 
 // ── PDF FIN DE CAMPAGNE ───────────────────────────────────────
+window.genererPDFCourant=function(){
+  window.genererPDF(S.exploit);
+}
+
 window.genererPDF=async function(exploitKey){
   const { jsPDF } = window.jspdf;
   if(!jsPDF){ showToast('Bibliothèque PDF non chargée'); return; }
