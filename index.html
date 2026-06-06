@@ -439,7 +439,7 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD0YXEmLDHiQ9GeXPMIenzaLec26JwCb2g",
@@ -451,8 +451,9 @@ const firebaseConfig = {
 };
 
 const fbApp = initializeApp(firebaseConfig);
-const db = getFirestore(fbApp);
-enableIndexedDbPersistence(db).catch(()=>{});
+const db = initializeFirestore(fbApp, {
+  localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
+});
 
 window.addEventListener('online',()=>{document.getElementById('offline-banner').classList.remove('show');showToast('✓ Connexion rétablie');});
 window.addEventListener('offline',()=>{document.getElementById('offline-banner').classList.add('show');});
