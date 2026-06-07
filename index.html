@@ -714,8 +714,7 @@ function renderHistRem(){
   const all=Object.values(S.remorques).filter(r=>r.exploit===e).sort((a,b)=>b.dt.localeCompare(a.dt));
   if(!all.length){document.getElementById('hist-rem').innerHTML='<div style="padding:16px;text-align:center;font-size:13px;color:var(--text3)">Aucune remorque pour cette exploitation.</div>';return;}
   document.getElementById('hist-rem').innerHTML=all.map(r=>{
-    const dt=new Date(r.dt);
-    const ds=dt.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})+' · '+dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+    const ds=fmtDateTime(r.dt);
     return `<div class="hist-item">
       <div style="flex:1;min-width:0"><div class="hist-main">${r.parcelle}</div><div class="hist-sub">${ds}</div></div>
       <div class="hist-val">${r.caisses} caisses</div>
@@ -793,7 +792,7 @@ function renderPressoir(){
     :bons.sort((a,b)=>b.date.localeCompare(a.date)).map(b=>{
       const kg=b.caisses>0?(b.poids/b.caisses).toFixed(1):'-';
       return `<div class="hist-item">
-        <div style="flex:1;min-width:0"><div class="hist-main">${b.bon||'—'} · ${b.pressoir}</div><div class="hist-sub">${b.date} · ${b.caisses} caisses · ${kg} kg/caisse</div></div>
+        <div style="flex:1;min-width:0"><div class="hist-main">${b.bon||'—'} · ${b.pressoir}</div><div class="hist-sub">${fmtDate(b.date)} · ${b.caisses} caisses · ${kg} kg/caisse</div></div>
         <div class="hist-val">${fmtKg(b.poids)}</div>
         <div class="hist-actions">
           <button class="icon-btn" onclick="editBon('${b.id}')"><i class="ti ti-edit" style="font-size:15px"></i></button>
@@ -923,15 +922,14 @@ function renderExport(){
 window.exportRemorques=function(){
   let csv='Exploitation;Parcelle;Caisses;Date;Heure\n';
   Object.values(S.remorques).sort((a,b)=>a.dt.localeCompare(b.dt)).forEach(r=>{
-    const dt=new Date(r.dt);
-    csv+=`${camp().exploitations[r.exploit]?.nom||r.exploit};${r.parcelle};${r.caisses};${dt.toLocaleDateString('fr-FR')};${dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}\n`;
+    csv+=`${camp().exploitations[r.exploit]?.nom||r.exploit};${r.parcelle};${r.caisses};${fmtDate(r.dt)};${fmtHeure(r.dt)}\n`;
   });
   dlCSV(csv,`remorques_${S.annee}.csv`);
 }
 window.exportBons=function(){
   let csv='Exploitation;Date;Pressoir;N° Bon;Caisses;Poids (kg);kg/caisse\n';
   Object.values(S.bons).sort((a,b)=>a.date.localeCompare(b.date)).forEach(b=>{
-    csv+=`${camp().exploitations[b.exploit]?.nom||b.exploit};${b.date};${b.pressoir};${b.bon||''};${b.caisses};${b.poids};${b.caisses>0?(b.poids/b.caisses).toFixed(2):''}\n`;
+    csv+=`${camp().exploitations[b.exploit]?.nom||b.exploit};${fmtDate(b.date)};${b.pressoir};${b.bon||''};${b.caisses};${b.poids};${b.caisses>0?(b.poids/b.caisses).toFixed(2):''}\n`;
   });
   dlCSV(csv,`bons_pressoir_${S.annee}.csv`);
 }
@@ -1413,6 +1411,24 @@ function updateFab(screen){
 }
 
 // ── PDF FIN DE CAMPAGNE ───────────────────────────────────────
+// ── FORMATAGE DATES & NOMBRES (uniformisé partout) ──────────
+function fmtDate(str){
+  // Accepte "YYYY-MM-DD" ou "YYYY-MM-DDTHH:MM"
+  const d=new Date(str);
+  const dd=String(d.getDate()).padStart(2,'0');
+  const mm=String(d.getMonth()+1).padStart(2,'0');
+  const yy=String(d.getFullYear()).slice(2);
+  return `${dd}/${mm}/${yy}`;
+}
+function fmtHeure(str){
+  // Accepte "YYYY-MM-DDTHH:MM"
+  const d=new Date(str);
+  return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+function fmtDateTime(str){
+  return fmtDate(str)+' · '+fmtHeure(str);
+}
+
 // Formatage nombres pour PDF (évite les caractères spéciaux)
 function fmtN(n){ return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,' '); }
 function fmtNDec(n,d=2){ 
@@ -1441,7 +1457,8 @@ window.genererPDF=async function(exploitKey){
   const surf=d.parcelles.reduce((a,p)=>a+p.surface,0);
   const rdtReel=surf>0&&totS>0?Math.round(totS*pm.val/surf):0;
   const comm=d.commentaires||{};
-  const dateGen=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
+  const now=new Date();
+  const dateGen=String(now.getDate()).padStart(2,'0')+'/'+String(now.getMonth()+1).padStart(2,'0')+'/'+now.getFullYear();
 
   const pdf = new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
   const W=210, mL=14, mR=14, usableW=W-mL-mR;
@@ -1544,7 +1561,7 @@ window.genererPDF=async function(exploitKey){
 
   if(bons.length>0){
     const rowsBons=bons.sort((a,b)=>a.date.localeCompare(b.date)).map(b=>[
-      b.date, b.bon||'—', b.pressoir, String(b.caisses),
+      fmtDate(b.date), b.bon||'—', b.pressoir, String(b.caisses),
       fmtN(b.poids), b.caisses>0?(b.poids/b.caisses).toFixed(2):'—'
     ]);
     rowsBons.push(['TOTAL','','',String(totC),fmtN(totP),totC>0?(totP/totC).toFixed(2):'—']);
