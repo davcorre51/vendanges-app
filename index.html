@@ -1545,7 +1545,7 @@ window.genererPDF=async function(exploitKey){
   if(bons.length>0){
     const rowsBons=bons.sort((a,b)=>a.date.localeCompare(b.date)).map(b=>[
       b.date, b.bon||'—', b.pressoir, String(b.caisses),
-      b.fmtN(poids), b.caisses>0?(b.poids/b.caisses).toFixed(2):'—'
+      fmtN(b.poids), b.caisses>0?(b.poids/b.caisses).toFixed(2):'—'
     ]);
     rowsBons.push(['TOTAL','','',String(totC),fmtN(totP),totC>0?(totP/totC).toFixed(2):'—']);
     pdf.autoTable({
