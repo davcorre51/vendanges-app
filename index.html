@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#2d5a27">
-<title>Vendanges</title>
+<title>Vendanges v3</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
@@ -510,7 +510,8 @@ async function creerCampagneDefaut(annee){
 
 // ── TEMPS RÉEL ────────────────────────────────────────────────
 function subscribeRemorques(){
-  S.unsubscribes.forEach(u=>u()); S.unsubscribes=[];
+  // Désabonner TOUS les listeners avant de recréer
+  S.unsubscribes.forEach(u=>{ try{u();}catch(e){} }); S.unsubscribes=[];
   S.unsubscribes.push(onSnapshot(collection(db,'campagnes',String(S.annee),'remorques'),snap=>{
     S.remorques={};
     snap.forEach(d=>{S.remorques[d.id]={...d.data(),id:d.id};});
@@ -1412,6 +1413,14 @@ function updateFab(screen){
 }
 
 // ── PDF FIN DE CAMPAGNE ───────────────────────────────────────
+// Formatage nombres pour PDF (évite les caractères spéciaux)
+function fmtN(n){ return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,' '); }
+function fmtNDec(n,d=2){ 
+  const parts=n.toFixed(d).split('.');
+  parts[0]=parts[0].replace(/\B(?=(\d{3})+(?!\d))/g,' ');
+  return parts.join(',');
+}
+
 window.genererPDFCourant=function(){
   window.genererPDF(S.exploit);
 }
@@ -1451,10 +1460,10 @@ window.genererPDF=async function(exploitKey){
 
   // ── Vignettes stats ──────────────────────────────────────
   const stats=[
-    ['Appellation', `${rdtExploit(e).toLocaleString('fr-FR')} kg/ha`],
+    ['Appellation', `${fmtN(rdtExploit(e))} kg/ha`],
     ['Caisses récoltées', `${totS} / ${totO}`],
-    ['Poids total', `${totP.toLocaleString('fr-FR')} kg`],
-    ['Rdt réel', rdtReel>0?`${rdtReel.toLocaleString('fr-FR')} kg/ha`:'—'],
+    ['Poids total', `${fmtN(totP)} kg`],
+    ['Rdt réel', rdtReel>0?`${fmtN(rdtReel)} kg/ha`:'—'],
   ];
   const bw=(usableW-9)/4;
   stats.forEach(([label,val],i)=>{
@@ -1474,7 +1483,7 @@ window.genererPDF=async function(exploitKey){
   pdf.setTextColor(pm.reel?45:146, pm.reel?90:64, pm.reel?39:14);
   pdf.setFontSize(8); pdf.setFont('helvetica','normal');
   const poidsInfo=pm.reel
-    ? `✓ Poids réel : ${pm.val.toFixed(2)} kg/caisse  (${totP.toLocaleString('fr-FR')} kg / ${totC} caisses pesées)`
+    ? `✓ Poids réel : ${pm.val.toFixed(2)} kg/caisse  (${fmtN(totP)} kg / ${totC} caisses pesées)`
     : `⏳ Poids prévisionnel : ${pm.val} kg/caisse  (en attente des bons pressoir)`;
   pdf.text(poidsInfo, mL+4, y+5.2);
   y+=13;
@@ -1486,18 +1495,18 @@ window.genererPDF=async function(exploitKey){
   const rowsParc=d.parcelles.map(p=>{
     const s=totSorties(e,p.nom), obj=objDynamique(e,p), ec=s-obj;
     const rha=s>0?Math.round(s*pm.val/p.surface):0;
-    return [p.nom, p.surface.toFixed(2), String(obj), String(s), (ec>0?'+':'')+ec, s>0?rha.toLocaleString('fr-FR'):'—'];
+    return [p.nom, p.surface.toFixed(2), String(obj), String(s), (ec>0?'+':'')+ec, s>0?fmtN(rha):'—'];
   });
   const totEc=totS-totO;
-  rowsParc.push(['TOTAL', surf.toFixed(2), String(totO), String(totS), (totEc>0?'+':'')+totEc, rdtReel>0?rdtReel.toLocaleString('fr-FR'):'—']);
+  rowsParc.push(['TOTAL', surf.toFixed(2), String(totO), String(totS), (totEc>0?'+':'')+totEc, rdtReel>0?fmtN(rdtReel):'—']);
 
   pdf.autoTable({
     startY:y, margin:{left:mL,right:mR},
     head:[['Parcelle','Surface (ha)','Objectif','Sorties','Écart','Rdt (kg/ha)']],
     body:rowsParc,
     styles:{fontSize:9,cellPadding:2.5},
-    headStyles:{fillColor:green,textColor:[255,255,255],fontStyle:'bold',fontSize:8},
-    columnStyles:{0:{cellWidth:50},1:{halign:'right'},2:{halign:'right'},3:{halign:'right'},4:{halign:'right'},5:{halign:'right'}},
+    headStyles:{fillColor:green,textColor:[255,255,255],fontStyle:'bold',fontSize:8,halign:'center'},
+    columnStyles:{0:{cellWidth:50},1:{halign:'center'},2:{halign:'center'},3:{halign:'center'},4:{halign:'center'},5:{halign:'center'}},
     didParseCell:(d)=>{ if(d.row.index===rowsParc.length-1){d.cell.styles.fontStyle='bold';d.cell.styles.fillColor=[234,243,232];} }
   });
   y=pdf.lastAutoTable.finalY+6;
@@ -1531,21 +1540,21 @@ window.genererPDF=async function(exploitKey){
 
   // Bons pressoir
   pdf.setTextColor(...green); pdf.setFontSize(10); pdf.setFont('helvetica','bold');
-  pdf.text(`Annexe 1 — Bons pressoir  (${bons.length} bons · ${totC} caisses · ${totP.toLocaleString('fr-FR')} kg)`, mL, y); y+=4;
+  pdf.text(`Annexe 1 — Bons pressoir  (${bons.length} bons · ${totC} caisses · ${fmtN(totP)} kg)`, mL, y); y+=4;
 
   if(bons.length>0){
     const rowsBons=bons.sort((a,b)=>a.date.localeCompare(b.date)).map(b=>[
       b.date, b.bon||'—', b.pressoir, String(b.caisses),
-      b.poids.toLocaleString('fr-FR'), b.caisses>0?(b.poids/b.caisses).toFixed(2):'—'
+      b.fmtN(poids), b.caisses>0?(b.poids/b.caisses).toFixed(2):'—'
     ]);
-    rowsBons.push(['TOTAL','','',String(totC),totP.toLocaleString('fr-FR'),totC>0?(totP/totC).toFixed(2):'—']);
+    rowsBons.push(['TOTAL','','',String(totC),fmtN(totP),totC>0?(totP/totC).toFixed(2):'—']);
     pdf.autoTable({
       startY:y, margin:{left:mL,right:mR},
       head:[['Date','N° Bon','Pressoir','Caisses','Poids (kg)','kg/caisse']],
       body:rowsBons,
       styles:{fontSize:8.5,cellPadding:2.2},
-      headStyles:{fillColor:green,textColor:[255,255,255],fontStyle:'bold',fontSize:8},
-      columnStyles:{3:{halign:'right'},4:{halign:'right'},5:{halign:'right'}},
+      headStyles:{fillColor:green,textColor:[255,255,255],fontStyle:'bold',fontSize:8,halign:'center'},
+      columnStyles:{3:{halign:'center'},4:{halign:'center'},5:{halign:'center'}},
       didParseCell:(d)=>{ if(d.row.index===rowsBons.length-1){d.cell.styles.fontStyle='bold';d.cell.styles.fillColor=[234,243,232];} }
     });
     y=pdf.lastAutoTable.finalY+8;
@@ -1570,8 +1579,8 @@ window.genererPDF=async function(exploitKey){
       head:[['Date','Heure','Parcelle','Caisses']],
       body:rowsRem,
       styles:{fontSize:8.5,cellPadding:2.2},
-      headStyles:{fillColor:green,textColor:[255,255,255],fontStyle:'bold',fontSize:8},
-      columnStyles:{3:{halign:'right'}},
+      headStyles:{fillColor:green,textColor:[255,255,255],fontStyle:'bold',fontSize:8,halign:'center'},
+      columnStyles:{3:{halign:'center'}},
       didParseCell:(d)=>{ if(d.row.index===rowsRem.length-1){d.cell.styles.fontStyle='bold';d.cell.styles.fillColor=[234,243,232];} }
     });
     y=pdf.lastAutoTable.finalY+6;
