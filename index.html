@@ -164,6 +164,9 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
 .sum-stat{background:var(--bg2);border-radius:var(--radius-sm);padding:9px 12px;border:1px solid var(--border)}
 .sum-label{font-size:10px;color:var(--text3);margin-bottom:2px;font-family:'DM Mono',monospace;font-weight:500}
 .sum-val{font-size:18px;font-weight:600;color:var(--text)}
+.dates-badge{display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 12px;font-size:12px;color:var(--text2)}
+.dates-badge i{font-size:16px;color:var(--accent);flex-shrink:0}
+.dates-badge strong{color:var(--text);font-family:'DM Mono',monospace}
 </style>
 </head>
 <body>
@@ -248,6 +251,7 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
       <div class="card" style="margin-top:4px">
         <div class="card-title">Comparaison — <span id="histo-exploit-label" style="color:var(--accent)"></span></div>
         <div id="etabs-histo" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px;scrollbar-width:none;-webkit-overflow-scrolling:touch"></div>
+        <div id="histo-dates" style="margin-bottom:10px"></div>
         <div id="histo-stats"></div>
       </div>
       <div class="card"><div class="card-title">Appellation kg/ha par parcelle</div><div id="histo-chart"></div></div>
@@ -875,6 +879,13 @@ async function renderHistoContent(a){
   const totO=d.parcelles.reduce((s,p)=>s+Math.round(p.surface*rdt/pm),0);
   const surf=d.parcelles.reduce((s,p)=>s+p.surface,0);
   const rdtHa=surf>0&&totS>0?Math.round(totS*pm/surf):0;
+
+  // Dates de vendange (1ère et dernière remorque de cette exploitation)
+  const datesVend=getDatesVendange(rems,e);
+  document.getElementById('histo-dates').innerHTML = datesVend
+    ? `<div class="dates-badge"><i class="ti ti-calendar-event"></i> Vendanges du <strong>${fmtDate(datesVend.debut)}</strong> au <strong>${fmtDate(datesVend.fin)}</strong></div>`
+    : `<div class="dates-badge"><i class="ti ti-calendar-off"></i> Aucune remorque enregistrée pour cette exploitation</div>`;
+
   document.getElementById('histo-stats').innerHTML=`
     <div class="stat-row">
       <div class="stat"><div class="stat-label">Appellation</div><div class="stat-val blue">${rdt.toLocaleString()}</div><div class="stat-sub">kg/ha</div></div>
@@ -1425,6 +1436,14 @@ function fmtHeure(str){
   const d=new Date(str);
   return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
 }
+// Calcule la première et dernière date de remorque pour une exploitation donnée
+function getDatesVendange(rems, exploit){
+  const filtered = rems.filter(r=>r.exploit===exploit);
+  if(!filtered.length) return null;
+  const sorted = filtered.map(r=>r.dt).sort();
+  return { debut: sorted[0], fin: sorted[sorted.length-1] };
+}
+
 function fmtDateTime(str){
   return fmtDate(str)+' · '+fmtHeure(str);
 }
@@ -1459,6 +1478,8 @@ window.genererPDF=async function(exploitKey){
   const comm=d.commentaires||{};
   const now=new Date();
   const dateGen=String(now.getDate()).padStart(2,'0')+'/'+String(now.getMonth()+1).padStart(2,'0')+'/'+now.getFullYear();
+  const datesVend=getDatesVendange(rems,e);
+  const periodeTxt=datesVend?`Vendanges du ${fmtDate(datesVend.debut)} au ${fmtDate(datesVend.fin)}`:'';
 
   const pdf = new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
   const W=210, mL=14, mR=14, usableW=W-mL-mR;
@@ -1467,13 +1488,17 @@ window.genererPDF=async function(exploitKey){
 
   // ── En-tête ──────────────────────────────────────────────
   pdf.setFillColor(...green);
-  pdf.rect(0,0,W,14,'F');
+  pdf.rect(0,0,W,18,'F');
   pdf.setTextColor(255,255,255);
   pdf.setFontSize(13); pdf.setFont('helvetica','bold');
-  pdf.text(`Rapport Vendanges ${S.annee} — ${d.nom}`, mL, 9.5);
+  pdf.text(`Rapport Vendanges ${S.annee} — ${d.nom}`, mL, 9);
   pdf.setFontSize(8); pdf.setFont('helvetica','normal');
-  pdf.text(`Généré le ${dateGen}`, W-mR, 9.5, {align:'right'});
-  y=22;
+  pdf.text(`Généré le ${dateGen}`, W-mR, 9, {align:'right'});
+  if(periodeTxt){
+    pdf.setFontSize(9); pdf.setFont('helvetica','italic');
+    pdf.text(periodeTxt, mL, 15);
+  }
+  y=26;
 
   // ── Vignettes stats ──────────────────────────────────────
   const stats=[
