@@ -286,6 +286,12 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
         </div>
         <div id="cfg-exploits"></div>
       </div>
+      <div class="card">
+        <div class="card-title">Sauvegarde</div>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:10px">Télécharge une copie complète de toutes tes campagnes (parcelles, pressoirs, remorques, bons, commentaires) dans un seul fichier. À conserver sur ton ordinateur ou ton cloud, indépendamment de Firebase.</p>
+        <button class="btn btn-secondary" style="margin-top:0" id="btn-export-all" onclick="exporterToutesDonnees()"><i class="ti ti-download"></i> Exporter toutes les données</button>
+        <div class="hint" id="export-all-hint" style="text-align:center"></div>
+      </div>
     </div>
   </div>
 
@@ -1641,6 +1647,52 @@ window.genererPDF=async function(exploitKey){
 
   pdf.save(`Vendanges_${S.annee}_${d.nom.replace(/\s+/g,'_')}.pdf`);
   showToast('✓ PDF généré et téléchargé !');
+}
+
+// ── SAUVEGARDE COMPLÈTE (export JSON) ────────────────────────
+window.exporterToutesDonnees=async function(){
+  const btn=document.getElementById('btn-export-all');
+  const hint=document.getElementById('export-all-hint');
+  btn.disabled=true;
+  hint.textContent='Préparation de la sauvegarde...';
+  try{
+    const backup={
+      genereLe:new Date().toISOString(),
+      app:'Vendanges',
+      version:1,
+      campagnes:{}
+    };
+    const annees=Object.keys(S.campagnes);
+    let i=0;
+    for(const annee of annees){
+      i++;
+      hint.textContent=`Récupération ${annee}... (${i}/${annees.length})`;
+      const campData=S.campagnes[annee];
+      const [remSnap,bonSnap]=await Promise.all([
+        getDocs(collection(db,'campagnes',annee,'remorques')),
+        getDocs(collection(db,'campagnes',annee,'bons'))
+      ]);
+      const remorques=[]; remSnap.forEach(d=>remorques.push({id:d.id,...d.data()}));
+      const bons=[]; bonSnap.forEach(d=>bons.push({id:d.id,...d.data()}));
+      backup.campagnes[annee]={...campData, remorques, bons};
+    }
+    const json=JSON.stringify(backup,null,2);
+    const blob=new Blob([json],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    const dateStr=new Date().toISOString().split('T')[0];
+    a.href=url; a.download=`Vendanges_Backup_${dateStr}.json`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    hint.textContent='✓ Sauvegarde téléchargée — '+annees.length+' campagne(s)';
+    showToast('✓ Sauvegarde complète téléchargée');
+  }catch(e){
+    hint.textContent='';
+    showToast('Erreur lors de la sauvegarde : '+e.message);
+  }finally{
+    btn.disabled=false;
+    setTimeout(()=>{hint.textContent='';},4000);
+  }
 }
 
 window.showToast=function(msg){
