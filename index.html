@@ -255,7 +255,9 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
         <div id="histo-stats"></div>
       </div>
       <div class="card"><div class="card-title">Appellation kg/ha par parcelle</div><div id="histo-chart"></div></div>
-      <div class="card"><div class="card-title">Commentaires — <span id="histo-comment-exploit" style="color:var(--accent)"></span></div><div id="histo-comments"></div></div>
+      <div class="card"><div class="card-title">Commentaires — <span id="histo-comment-exploit" style="color:var(--accent)"></span></div><div id="histo-comments"></div>
+        <div id="histo-meteo" style="margin-top:10px"></div>
+      </div>
       <div class="card"><div class="card-title">Export des données</div><div id="export-section"></div></div>
     </div>
 
@@ -318,6 +320,11 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
       <div class="form-group"><label class="form-label">Nom</label><input type="text" id="parc-nom" placeholder="ex : Les Grandes Vignes"></div>
       <div class="form-group"><label class="form-label">Surface (ha)</label><input type="number" id="parc-surface" placeholder="ex : 0.45" step="0.01" min="0.01" oninput="calcParcObj()"></div>
       <div class="form-group"><label class="form-label">Objectif caisses</label><input type="number" id="parc-obj" placeholder="calculé automatiquement" oninput="manualParcObj=true"><div class="hint" id="parc-calc-hint"></div></div>
+      <div class="form-group" style="display:flex;gap:8px">
+        <div style="flex:1"><label class="form-label">Latitude <span style="color:var(--text3);font-weight:400">(optionnel)</span></label><input type="number" id="parc-lat" placeholder="ex : 48.9123" step="0.000001"></div>
+        <div style="flex:1"><label class="form-label">Longitude <span style="color:var(--text3);font-weight:400">(optionnel)</span></label><input type="number" id="parc-lon" placeholder="ex : 3.6789" step="0.000001"></div>
+      </div>
+      <div class="hint" style="color:var(--text3)">Sert au relevé météo automatique de l'exploitation (moyenne des parcelles géolocalisées).</div>
       <button class="btn btn-primary" id="btn-parc-save" onclick="saveParc()"><i class="ti ti-check"></i> Enregistrer</button>
       <button class="btn btn-secondary" id="btn-parc-cancel" style="display:none" onclick="resetParcForm()">Annuler la modification</button>
     </div>
@@ -782,6 +789,7 @@ window.saveRem=async function(){
   const obj={exploit:e,parcelle:parc,caisses,dt};
   if(S.editRemId){await updateDoc(doc(db,'campagnes',String(S.annee),'remorques',S.editRemId),obj);showToast('Remorque modifiée');}
   else{await addDoc(collection(db,'campagnes',String(S.annee),'remorques'),obj);showToast('✓ '+caisses+' caisses — '+parc);}
+  triggerMeteoJour(S.annee,e,dt);
   cancelRem();
 }
 window.cancelRem=function(){
@@ -871,6 +879,95 @@ window.cancelBon=function(){
   document.getElementById('btn-bon-cancel').style.display='none';
 }
 
+// ── MÉTÉO AUTOMATIQUE (1 relevé/jour/exploitation, barycentre des parcelles) ──
+function barycentreExploit(d){
+  const pts=(d.parcelles||[]).filter(p=>typeof p.lat==='number'&&typeof p.lon==='number'&&!isNaN(p.lat)&&!isNaN(p.lon));
+  if(!pts.length) return null;
+  const lat=pts.reduce((s,p)=>s+p.lat,0)/pts.length;
+  const lon=pts.reduce((s,p)=>s+p.lon,0)/pts.length;
+  return {lat,lon};
+}
+const meteoCache={}; // évite de re-lire Firestore plusieurs fois dans la même session
+async function getOrFetchMeteoJour(annee,exploit,dateISO){
+  const key=`${annee}_${exploit}_${dateISO}`;
+  if(meteoCache[key]) return meteoCache[key];
+  const ref=doc(db,'campagnes',String(annee),'meteo',`${exploit}_${dateISO}`);
+  try{
+    const snap=await getDoc(ref);
+    if(snap.exists()){ meteoCache[key]=snap.data(); return meteoCache[key]; }
+  }catch(e){ /* pas trouvé, on continue vers le fetch */ }
+
+  const d=camp()?.exploitations?.[exploit];
+  const latlon=d?barycentreExploit(d):null;
+  if(!latlon) return null; // pas de coordonnées GPS saisies sur les parcelles
+
+  const params=`latitude=${latlon.lat.toFixed(5)}&longitude=${latlon.lon.toFixed(5)}&start_date=${dateISO}&end_date=${dateISO}&daily=temperature_2m_min,temperature_2m_max,precipitation_sum,windspeed_10m_max&timezone=Europe%2FParis`;
+  let data=null;
+  try{
+    let res=await fetch(`https://archive-api.open-meteo.com/v1/archive?${params}`);
+    let j=await res.json();
+    if(!j.daily||j.daily.temperature_2m_max[0]==null){
+      // Jour pas encore dans l'archive historique (ex : jour même) → bascule sur le forecast
+      res=await fetch(`https://api.open-meteo.com/v1/forecast?${params}`);
+      j=await res.json();
+    }
+    if(j.daily&&j.daily.temperature_2m_max[0]!=null){
+      data={
+        tempMin:j.daily.temperature_2m_min[0],
+        tempMax:j.daily.temperature_2m_max[0],
+        pluie:j.daily.precipitation_sum[0],
+        ventMax:j.daily.windspeed_10m_max[0],
+        recupereLe:new Date().toISOString()
+      };
+    }
+  }catch(e){ console.error('Erreur météo:',e); return null; }
+  if(!data) return null;
+  try{ await setDoc(ref,data); }catch(e){ console.error('Erreur sauvegarde météo:',e); }
+  meteoCache[key]=data;
+  return data;
+}
+// Déclenché en arrière-plan après chaque remorque — ne bloque jamais la saisie
+function triggerMeteoJour(annee,exploit,dt){
+  try{
+    const dateISO=String(dt).split('T')[0];
+    if(!dateISO) return;
+    getOrFetchMeteoJour(annee,exploit,dateISO); // fire-and-forget, pas de await
+  }catch(e){ /* silencieux : la météo est un bonus, jamais bloquant */ }
+}
+function fmtMeteoLigne(dateISO,m){
+  if(!m) return null;
+  const tmin=Math.round(m.tempMin), tmax=Math.round(m.tempMax);
+  const pluie=m.pluie!=null?m.pluie.toFixed(1):'0.0';
+  const vent=m.ventMax!=null?Math.round(m.ventMax):'—';
+  return `${fmtDate(dateISO)} · ${tmin}–${tmax}°C · ${pluie} mm · vent ${vent} km/h`;
+}
+// Affiche les relevés météo déjà connus pour la période de vendange (lecture seule, pas d'appel API ici)
+async function renderMeteoHisto(annee,exploit,datesVend){
+  const box=document.getElementById('histo-meteo');
+  if(!box) return;
+  if(!datesVend){ box.innerHTML=''; return; }
+  const jours=[];
+  let cur=new Date(datesVend.debut+'T00:00:00');
+  const fin=new Date(datesVend.fin+'T00:00:00');
+  while(cur<=fin){ jours.push(cur.toISOString().split('T')[0]); cur.setDate(cur.getDate()+1); }
+
+  const lignes=[];
+  for(const j of jours){
+    const ref=doc(db,'campagnes',String(annee),'meteo',`${exploit}_${j}`);
+    try{
+      const snap=await getDoc(ref);
+      if(snap.exists()){ const l=fmtMeteoLigne(j,snap.data()); if(l) lignes.push(l); }
+    }catch(e){ /* pas de relevé pour ce jour, on ignore */ }
+  }
+  if(!lignes.length){
+    box.innerHTML=`<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;font-family:'DM Mono',monospace;margin-bottom:4px">📡 Relevé météo auto</div>
+      <div style="font-size:12px;color:var(--text3)">Aucun relevé encore récupéré — il se complète automatiquement à chaque remorque saisie (nécessite des coordonnées GPS sur au moins une parcelle).</div>`;
+    return;
+  }
+  box.innerHTML=`<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;font-family:'DM Mono',monospace;margin-bottom:4px">📡 Relevé météo auto (moy. journalière)</div>
+    <div style="font-size:12px;color:var(--text);line-height:1.7;background:var(--bg2);border-radius:8px;padding:8px 10px">${lignes.join('<br>')}</div>`;
+}
+
 // ── HISTORIQUE ────────────────────────────────────────────────
 async function renderHisto(){
   document.getElementById('histo-exploit-label').textContent=expl().nom;
@@ -935,6 +1032,9 @@ async function renderHistoContent(a){
   document.getElementById('histo-comments').innerHTML=commHtml
     ? `<div>${commHtml}</div>`
     : '<div style="font-size:13px;color:var(--text3);padding:4px">Aucun commentaire enregistré pour cette exploitation.</div>';
+
+  // Relevé météo auto (1 ligne / jour de vendange, complément des commentaires)
+  renderMeteoHisto(a,e,datesVend);
 
   document.getElementById('histo-chart').innerHTML=d.parcelles.map(p=>{
     const s=rems.filter(r=>r.exploit===e&&r.parcelle===p.nom).reduce((a,r)=>a+r.caisses,0);
@@ -1222,6 +1322,8 @@ window.editParc=function(i){
   document.getElementById('parc-nom').value=p.nom;
   document.getElementById('parc-surface').value=p.surface;
   document.getElementById('parc-obj').value=Math.round(p.surface*rdtExploit(e)/pm.val);
+  document.getElementById('parc-lat').value=p.lat!=null?p.lat:'';
+  document.getElementById('parc-lon').value=p.lon!=null?p.lon:'';
   document.getElementById('parc-calc-hint').textContent=`Surface actuelle : ${p.surface} ha`;
   document.getElementById('parc-form-title').textContent='Modifier — '+p.nom;
   document.getElementById('btn-parc-save').innerHTML='<i class="ti ti-check"></i> Enregistrer les modifications';
@@ -1243,21 +1345,23 @@ window.saveParc=async function(){
   const nom=document.getElementById('parc-nom').value.trim();
   const surface=parseFloat(document.getElementById('parc-surface').value);
   const obj=parseInt(document.getElementById('parc-obj').value);
+  const latRaw=document.getElementById('parc-lat').value, lonRaw=document.getElementById('parc-lon').value;
+  const lat=latRaw!==''?parseFloat(latRaw):null, lon=lonRaw!==''?parseFloat(lonRaw):null;
   if(!nom){showToast('Saisis un nom de parcelle');return;}
   if(!surface||surface<=0){showToast('Surface invalide');return;}
   if(!obj||obj<=0){showToast('Objectif invalide');return;}
   const parcs=camp().exploitations[S.subExploit].parcelles;
-  if(S.editParcIdx>=0){parcs[S.editParcIdx]={nom,surface,obj};showToast('"'+nom+'" modifiée');}
+  if(S.editParcIdx>=0){parcs[S.editParcIdx]={nom,surface,obj,lat,lon};showToast('"'+nom+'" modifiée');}
   else{
     if(parcs.find(p=>p.nom.toLowerCase()===nom.toLowerCase())){showToast('Ce nom existe déjà');return;}
-    parcs.push({nom,surface,obj}); showToast('"'+nom+'" ajoutée');
+    parcs.push({nom,surface,obj,lat,lon}); showToast('"'+nom+'" ajoutée');
   }
   await setDoc(doc(db,'campagnes',String(S.annee)),camp());
   resetParcForm(); renderParcList(); renderParcSummary();
 }
 window.resetParcForm=function(){
   S.editParcIdx=-1; manualParcObj=false;
-  ['parc-nom','parc-surface','parc-obj'].forEach(id=>document.getElementById(id).value='');
+  ['parc-nom','parc-surface','parc-obj','parc-lat','parc-lon'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('parc-calc-hint').textContent='';
   document.getElementById('parc-form-title').textContent='Ajouter une parcelle';
   document.getElementById('btn-parc-save').innerHTML='<i class="ti ti-check"></i> Enregistrer';
@@ -1435,6 +1539,7 @@ window.saveQuickRem=async function(){
   if(!caisses||caisses<=0){showToast('Nombre de caisses invalide');return;}
   const dt=nowDT();
   await addDoc(collection(db,'campagnes',String(S.annee),'remorques'),{exploit:e,parcelle:parc,caisses,dt});
+  triggerMeteoJour(S.annee,e,dt);
   document.getElementById('quick-modal').classList.remove('active');
   showToast('✓ '+caisses+' caisses — '+parc);
 }
@@ -1594,6 +1699,28 @@ window.genererPDF=async function(exploitKey){
       pdf.text(lines, mL, y); y+=lines.length*4.5+3;
     });
     y+=2;
+  }
+
+  // ── Relevé météo auto (complément, par jour de la période de vendange) ──
+  if(datesVend){
+    const joursMeteo=[];
+    let cur=new Date(datesVend.debut+'T00:00:00');
+    const finV=new Date(datesVend.fin+'T00:00:00');
+    while(cur<=finV){ joursMeteo.push(cur.toISOString().split('T')[0]); cur.setDate(cur.getDate()+1); }
+    const meteoLignes=[];
+    for(const j of joursMeteo){
+      try{
+        const snap=await getDoc(doc(db,'campagnes',String(S.annee),'meteo',`${e}_${j}`));
+        if(snap.exists()){ const l=fmtMeteoLigne(j,snap.data()); if(l) meteoLignes.push(l); }
+      }catch(err){ /* pas de relevé ce jour-là */ }
+    }
+    if(meteoLignes.length){
+      pdf.setTextColor(...green); pdf.setFontSize(10); pdf.setFont('helvetica','bold');
+      pdf.text('Relevé météo (moy. journalière)', mL, y); y+=5;
+      pdf.setTextColor(...darkText); pdf.setFont('helvetica','normal'); pdf.setFontSize(9);
+      meteoLignes.forEach(l=>{ pdf.text(l, mL, y); y+=4.5; });
+      y+=3;
+    }
   }
 
   // ── Page 2 : Annexes ─────────────────────────────────────
