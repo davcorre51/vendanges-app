@@ -880,6 +880,11 @@ window.cancelBon=function(){
 }
 
 // ── MÉTÉO AUTOMATIQUE (1 relevé/jour/exploitation, barycentre des parcelles) ──
+// Formate une Date en "YYYY-MM-DD" en heure LOCALE (toISOString() décale via UTC, à éviter ici)
+function toLocalISODate(d){
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
 function barycentreExploit(d){
   const pts=(d.parcelles||[]).filter(p=>typeof p.lat==='number'&&typeof p.lon==='number'&&!isNaN(p.lat)&&!isNaN(p.lon));
   if(!pts.length) return null;
@@ -951,7 +956,7 @@ async function renderMeteoHisto(annee,exploit,datesVend){
   const jours=[];
   let cur=new Date(debutISO+'T00:00:00');
   const fin=new Date(finISO+'T00:00:00');
-  while(cur<=fin){ jours.push(cur.toISOString().split('T')[0]); cur.setDate(cur.getDate()+1); }
+  while(cur<=fin){ jours.push(toLocalISODate(cur)); cur.setDate(cur.getDate()+1); }
 
   const lignes=[];
   for(const j of jours){
@@ -1710,7 +1715,7 @@ window.genererPDF=async function(exploitKey){
     const finISO=String(datesVend.fin).split('T')[0];
     let cur=new Date(debutISO+'T00:00:00');
     const finV=new Date(finISO+'T00:00:00');
-    while(cur<=finV){ joursMeteo.push(cur.toISOString().split('T')[0]); cur.setDate(cur.getDate()+1); }
+    while(cur<=finV){ joursMeteo.push(toLocalISODate(cur)); cur.setDate(cur.getDate()+1); }
     const meteoLignes=[];
     for(const j of joursMeteo){
       try{
