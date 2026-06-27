@@ -513,6 +513,38 @@ let S = {
 let manualParcObj = false;
 
 // ── INIT ──────────────────────────────────────────────────────
+// Migration unique : attribue un ID stable à chaque parcelle, puis rattache rétroactivement
+// les remorques déjà enregistrées (toutes campagnes) qui n'ont pas encore de parcelleId,
+// par correspondance de nom. Ne s'exécute qu'une fois par campagne (flag migrePID).
+async function migrerParcellesEtRemorques(){
+  for(const annee of Object.keys(S.campagnes)){
+    const c=S.campagnes[annee];
+    if(c.migrePID) continue;
+    try{
+      let changed=false;
+      for(const e of Object.keys(c.exploitations||{})){
+        const d=c.exploitations[e];
+        (d.parcelles||[]).forEach(p=>{ if(!p.id){ p.id=genId(); changed=true; } });
+      }
+      if(changed) await setDoc(doc(db,'campagnes',annee),c);
+
+      const remSnap=await getDocs(collection(db,'campagnes',annee,'remorques'));
+      const tasks=[];
+      remSnap.forEach(docSnap=>{
+        const r=docSnap.data();
+        if(r.parcelleId) return;
+        const d=c.exploitations[r.exploit];
+        const p=d?.parcelles.find(pp=>pp.nom===r.parcelle);
+        if(p?.id) tasks.push(updateDoc(doc(db,'campagnes',annee,'remorques',docSnap.id),{parcelleId:p.id}));
+      });
+      await Promise.all(tasks);
+
+      c.migrePID=true;
+      await setDoc(doc(db,'campagnes',annee),c);
+    }catch(e){ console.error('Migration parcelleId — campagne '+annee+' :',e); }
+  }
+}
+
 async function init() {
   try {
     await attendreAuth();
@@ -523,6 +555,7 @@ async function init() {
   const snap = await getDocs(collection(db,'campagnes'));
   if(snap.empty){ await creerCampagneDefaut(2025); }
   else { snap.forEach(d=>{ S.campagnes[d.id]=d.data(); }); }
+  await migrerParcellesEtRemorques(); // une seule fois par campagne : attribue un ID stable aux parcelles + rattache l'historique
   const annees = Object.keys(S.campagnes).map(Number).sort((a,b)=>b-a);
   const active = annees.find(a=>S.campagnes[a]?.active)||annees[0];
   S.annee=active; S.campagne=S.campagnes[active];
@@ -591,8 +624,17 @@ function objDynamique(e,p){
   return Math.round(p.surface*rdtExploit(e)/pm.val);
 }
 
-function totSorties(e,parc){
-  return Object.values(S.remorques).filter(r=>r.exploit===e&&r.parcelle===parc).reduce((a,r)=>a+r.caisses,0);
+function totSorties(e,p){
+  return Object.values(S.remorques).filter(r=>r.exploit===e&&matchParc(r,p)).reduce((a,r)=>a+r.caisses,0);
+}
+// Génère un ID court et stable pour une parcelle (ne change jamais, même si le nom est modifié)
+function genId(){ return 'p_'+Math.random().toString(36).slice(2,9); }
+// Une remorque correspond à une parcelle si son parcelleId correspond (méthode fiable, insensible au renommage),
+// ou — pour les remorques anciennes pas encore migrées — si le nom texte correspond encore (méthode historique).
+function matchParc(r,p){
+  if(!p) return false;
+  if(r.parcelleId) return r.parcelleId===p.id;
+  return r.parcelle===p.nom;
 }
 const today=()=>new Date().toISOString().split('T')[0];
 function nowDT(){const n=new Date();return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0')+'T'+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');}
@@ -663,7 +705,7 @@ function renderTableau(){
   if(!S.campagne) return;
   buildEtabs('etabs-tableau');
   const e=S.exploit, d=expl(e), pm=poidsReel(e);
-  const totS=d.parcelles.reduce((a,p)=>a+totSorties(e,p.nom),0);
+  const totS=d.parcelles.reduce((a,p)=>a+totSorties(e,p),0);
   const totO=d.parcelles.reduce((a,p)=>a+objDynamique(e,p),0);
   const totKgObj=Math.round(totO*pm.val);
   const totKgRecolte=Math.round(totS*pm.val);
@@ -687,7 +729,7 @@ function renderTableau(){
   document.getElementById('prog-fill').style.width=Math.min(pct,100)+'%';
 
   let rows=d.parcelles.map(p=>{
-    const s=totSorties(e,p.nom), obj=objDynamique(e,p);
+    const s=totSorties(e,p), obj=objDynamique(e,p);
     const ec=s-obj, pct2=obj>0?Math.round(s/obj*100):0;
     const rha=s>0?Math.round(s*pm.val/p.surface):0;
     const ecH=ec>0?`<span class="dp">+${ec}</span>`:ec<0?`<span class="dn">${ec}</span>`:'—';
@@ -788,7 +830,8 @@ window.saveRem=async function(){
   const caisses=parseInt(document.getElementById('s-caisses').value),dt=document.getElementById('s-dt').value;
   if(!caisses||caisses<=0){showToast('Nombre de caisses invalide');return;}
   if(!dt){showToast('Date et heure requises');return;}
-  const obj={exploit:e,parcelle:parc,caisses,dt};
+  const pObj=camp().exploitations[e]?.parcelles.find(pp=>pp.nom===parc);
+  const obj={exploit:e,parcelle:parc,parcelleId:pObj?.id||null,caisses,dt};
   if(S.editRemId){await updateDoc(doc(db,'campagnes',String(S.annee),'remorques',S.editRemId),obj);showToast('Remorque modifiée');}
   else{await addDoc(collection(db,'campagnes',String(S.annee),'remorques'),obj);showToast('✓ '+caisses+' caisses — '+parc);}
   triggerMeteoJour(S.annee,e,dt);
@@ -1008,7 +1051,7 @@ async function renderHistoContent(a){
   const prevPoids=d.poidsPrev||c.poidsPrev||41;
   const pm=totC>0?totP/totC:prevPoids;
   const rdt=d.rendement||c.rendement||9120;
-  const totS=d.parcelles.reduce((s,p)=>s+rems.filter(r=>r.exploit===e&&r.parcelle===p.nom).reduce((a,r)=>a+r.caisses,0),0);
+  const totS=d.parcelles.reduce((s,p)=>s+rems.filter(r=>r.exploit===e&&matchParc(r,p)).reduce((a,r)=>a+r.caisses,0),0);
   const totO=d.parcelles.reduce((s,p)=>s+Math.round(p.surface*rdt/pm),0);
   const surf=d.parcelles.reduce((s,p)=>s+p.surface,0);
   const rdtHa=surf>0&&totS>0?Math.round(totS*pm/surf):0;
@@ -1027,7 +1070,7 @@ async function renderHistoContent(a){
       <div class="stat"><div class="stat-label">Rdt réel kg/ha</div><div class="stat-val green">${rdtHa>0?rdtHa.toLocaleString():'—'}</div><div class="stat-sub">${pm.toFixed(2)} kg/caisse</div></div>
     </div>`;
   const maxRdt=Math.max(...d.parcelles.map(p=>{
-    const s=rems.filter(r=>r.exploit===e&&r.parcelle===p.nom).reduce((a,r)=>a+r.caisses,0);
+    const s=rems.filter(r=>r.exploit===e&&matchParc(r,p)).reduce((a,r)=>a+r.caisses,0);
     return s>0?Math.round(s*pm/p.surface):0;
   }),1);
   // Commentaires
@@ -1046,7 +1089,7 @@ async function renderHistoContent(a){
   renderMeteoHisto(a,e,datesVend);
 
   document.getElementById('histo-chart').innerHTML=d.parcelles.map(p=>{
-    const s=rems.filter(r=>r.exploit===e&&r.parcelle===p.nom).reduce((a,r)=>a+r.caisses,0);
+    const s=rems.filter(r=>r.exploit===e&&matchParc(r,p)).reduce((a,r)=>a+r.caisses,0);
     const rdtP=s>0?Math.round(s*pm/p.surface):0;
     return `<div class="bar-row"><span class="bar-label" title="${p.nom}">${p.nom}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.round(rdtP/maxRdt*100)}%"></div></div><span class="bar-val">${rdtP>0?rdtP.toLocaleString():'—'} kg/ha</span></div>`;
   }).join('');
@@ -1084,7 +1127,7 @@ window.exportRecap=function(){
   const e=S.exploit, d=expl(e), pm=poidsReel(e);
   let csv='Parcelle;Surface (ha);Objectif;Sorties;Écart;Rdt obj. (kg/ha);Rdt réel (kg/ha)\n';
   d.parcelles.forEach(p=>{
-    const s=totSorties(e,p.nom),obj=objDynamique(e,p),ec=s-obj;
+    const s=totSorties(e,p),obj=objDynamique(e,p),ec=s-obj;
     csv+=`${p.nom};${p.surface};${obj};${s};${ec};${Math.round(rdtExploit(e))};${s>0?Math.round(s*pm.val/p.surface):0}\n`;
   });
   dlCSV(csv,`recap_${e}_${S.annee}.csv`);
@@ -1340,8 +1383,12 @@ window.editParc=function(i){
   document.getElementById('parc-form-card').scrollIntoView({behavior:'smooth'});
 }
 window.confirmDeleteParc=function(i){
-  const nom=camp().exploitations[S.subExploit].parcelles[i].nom;
-  showModal('Supprimer la parcelle',`Supprimer "${nom}" ? Les remorques déjà enregistrées sont conservées.`,'Supprimer','btn-danger',()=>deleteParc(i));
+  const e=S.subExploit, p=camp().exploitations[e].parcelles[i];
+  const nb=Object.values(S.remorques).filter(r=>r.exploit===e&&matchParc(r,p)).length;
+  const msg=nb>0
+    ? `Supprimer "${p.nom}" ? ${nb} remorque(s) déjà enregistrée(s) cette campagne ne seront plus comptées dans les totaux affichés (l'historique reste conservé dans la base, mais invisible tant qu'aucune parcelle ne reprend cet ID).`
+    : `Supprimer "${p.nom}" ? Les remorques déjà enregistrées sont conservées.`;
+  showModal('Supprimer la parcelle',msg,'Supprimer','btn-danger',()=>deleteParc(i));
 }
 async function deleteParc(i){
   const nom=camp().exploitations[S.subExploit].parcelles[i].nom;
@@ -1360,10 +1407,14 @@ window.saveParc=async function(){
   if(!surface||surface<=0){showToast('Surface invalide');return;}
   if(!obj||obj<=0){showToast('Objectif invalide');return;}
   const parcs=camp().exploitations[S.subExploit].parcelles;
-  if(S.editParcIdx>=0){parcs[S.editParcIdx]={nom,surface,obj,lat,lon};showToast('"'+nom+'" modifiée');}
+  if(S.editParcIdx>=0){
+    const idExistant=parcs[S.editParcIdx].id||genId(); // garde l'ID si présent, en crée un si jamais absent (ancienne parcelle)
+    parcs[S.editParcIdx]={nom,surface,obj,lat,lon,id:idExistant};
+    showToast('"'+nom+'" modifiée');
+  }
   else{
     if(parcs.find(p=>p.nom.toLowerCase()===nom.toLowerCase())){showToast('Ce nom existe déjà');return;}
-    parcs.push({nom,surface,obj,lat,lon}); showToast('"'+nom+'" ajoutée');
+    parcs.push({nom,surface,obj,lat,lon,id:genId()}); showToast('"'+nom+'" ajoutée');
   }
   await setDoc(doc(db,'campagnes',String(S.annee)),camp());
   resetParcForm(); renderParcList(); renderParcSummary();
@@ -1547,7 +1598,8 @@ window.saveQuickRem=async function(){
   const caisses=parseInt(document.getElementById('q-caisses').value);
   if(!caisses||caisses<=0){showToast('Nombre de caisses invalide');return;}
   const dt=nowDT();
-  await addDoc(collection(db,'campagnes',String(S.annee),'remorques'),{exploit:e,parcelle:parc,caisses,dt});
+  const pObj=camp().exploitations[e]?.parcelles.find(pp=>pp.nom===parc);
+  await addDoc(collection(db,'campagnes',String(S.annee),'remorques'),{exploit:e,parcelle:parc,parcelleId:pObj?.id||null,caisses,dt});
   triggerMeteoJour(S.annee,e,dt);
   document.getElementById('quick-modal').classList.remove('active');
   showToast('✓ '+caisses+' caisses — '+parc);
@@ -1610,7 +1662,7 @@ window.genererPDF=async function(exploitKey){
   const pm=poidsReel(e);
   const rems=Object.values(S.remorques).filter(r=>r.exploit===e);
   const bons=Object.values(S.bons).filter(b=>b.exploit===e);
-  const totS=d.parcelles.reduce((a,p)=>a+totSorties(e,p.nom),0);
+  const totS=d.parcelles.reduce((a,p)=>a+totSorties(e,p),0);
   const totO=d.parcelles.reduce((a,p)=>a+objDynamique(e,p),0);
   const totP=bons.reduce((a,b)=>a+b.poids,0);
   const totC=bons.reduce((a,b)=>a+b.caisses,0);
@@ -1676,7 +1728,7 @@ window.genererPDF=async function(exploitKey){
   pdf.text('Synthèse par parcelle', mL, y); y+=4;
 
   const rowsParc=d.parcelles.map(p=>{
-    const s=totSorties(e,p.nom), obj=objDynamique(e,p), ec=s-obj;
+    const s=totSorties(e,p), obj=objDynamique(e,p), ec=s-obj;
     const rha=s>0?Math.round(s*pm.val/p.surface):0;
     return [p.nom, p.surface.toFixed(2), String(obj), String(s), (ec>0?'+':'')+ec, s>0?fmtN(rha):'—'];
   });
