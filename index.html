@@ -940,11 +940,20 @@ function barycentreExploit(d){
 const meteoCache={}; // évite de re-lire Firestore plusieurs fois dans la même session
 async function getOrFetchMeteoJour(annee,exploit,dateISO){
   const key=`${annee}_${exploit}_${dateISO}`;
-  if(meteoCache[key]) return meteoCache[key];
+  if(meteoCache[key] && meteoCache[key].source!=='forecast') return meteoCache[key];
   const ref=doc(db,'campagnes',String(annee),'meteo',`${exploit}_${dateISO}`);
+  const estJourPasse = dateISO < toLocalISODate(new Date()); // la journée est-elle terminée ?
   try{
     const snap=await getDoc(ref);
-    if(snap.exists()){ meteoCache[key]=snap.data(); return meteoCache[key]; }
+    if(snap.exists()){
+      const existant=snap.data();
+      // Si le relevé existant était une prévision (jour pas encore terminé au moment du 1er appel)
+      // et que la journée est maintenant passée, on le rafraîchit une fois avec la valeur réelle confirmée.
+      if(!(existant.source==='forecast' && estJourPasse)){
+        meteoCache[key]=existant; return existant;
+      }
+      // sinon on continue plus bas pour refaire l'appel (archive cette fois)
+    }
   }catch(e){ /* pas trouvé, on continue vers le fetch */ }
 
   const d=camp()?.exploitations?.[exploit];
@@ -956,10 +965,12 @@ async function getOrFetchMeteoJour(annee,exploit,dateISO){
   try{
     let res=await fetch(`https://archive-api.open-meteo.com/v1/archive?${params}`);
     let j=await res.json();
+    let source='archive';
     if(!j.daily||j.daily.temperature_2m_max[0]==null){
       // Jour pas encore dans l'archive historique (ex : jour même) → bascule sur le forecast
       res=await fetch(`https://api.open-meteo.com/v1/forecast?${params}`);
       j=await res.json();
+      source='forecast';
     }
     if(j.daily&&j.daily.temperature_2m_max[0]!=null){
       data={
@@ -967,6 +978,7 @@ async function getOrFetchMeteoJour(annee,exploit,dateISO){
         tempMax:j.daily.temperature_2m_max[0],
         pluie:j.daily.precipitation_sum[0],
         ventMax:j.daily.windspeed_10m_max[0],
+        source,
         recupereLe:new Date().toISOString()
       };
     }
