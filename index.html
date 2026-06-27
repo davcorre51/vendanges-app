@@ -946,9 +946,11 @@ async function renderMeteoHisto(annee,exploit,datesVend){
   const box=document.getElementById('histo-meteo');
   if(!box) return;
   if(!datesVend){ box.innerHTML=''; return; }
+  const debutISO=String(datesVend.debut).split('T')[0];
+  const finISO=String(datesVend.fin).split('T')[0];
   const jours=[];
-  let cur=new Date(datesVend.debut+'T00:00:00');
-  const fin=new Date(datesVend.fin+'T00:00:00');
+  let cur=new Date(debutISO+'T00:00:00');
+  const fin=new Date(finISO+'T00:00:00');
   while(cur<=fin){ jours.push(cur.toISOString().split('T')[0]); cur.setDate(cur.getDate()+1); }
 
   const lignes=[];
@@ -1704,8 +1706,10 @@ window.genererPDF=async function(exploitKey){
   // ── Relevé météo auto (complément, par jour de la période de vendange) ──
   if(datesVend){
     const joursMeteo=[];
-    let cur=new Date(datesVend.debut+'T00:00:00');
-    const finV=new Date(datesVend.fin+'T00:00:00');
+    const debutISO=String(datesVend.debut).split('T')[0];
+    const finISO=String(datesVend.fin).split('T')[0];
+    let cur=new Date(debutISO+'T00:00:00');
+    const finV=new Date(finISO+'T00:00:00');
     while(cur<=finV){ joursMeteo.push(cur.toISOString().split('T')[0]); cur.setDate(cur.getDate()+1); }
     const meteoLignes=[];
     for(const j of joursMeteo){
