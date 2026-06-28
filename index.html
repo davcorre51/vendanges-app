@@ -540,6 +540,41 @@ async function migrerParcellesEtRemorques(){
   }
 }
 
+// Migration unique : même principe que pour les parcelles, appliqué aux pressoirs.
+// Attribue un ID stable à chaque pressoir, puis rattache rétroactivement les bons existants
+// (toutes campagnes) qui n'ont pas encore de pressoirId, par correspondance de nom.
+async function migrerPressoirsEtBons(){
+  for(const annee of Object.keys(S.campagnes)){
+    const c=S.campagnes[annee];
+    if(c.migrePressoirID) continue;
+    try{
+      let changed=false;
+      for(const e of Object.keys(c.exploitations||{})){
+        const d=c.exploitations[e];
+        (d.pressoirs||[]).forEach((p,i)=>{
+          if(typeof p==='string'){ d.pressoirs[i]={nom:p,id:genId()}; changed=true; }
+          else if(!p.id){ p.id=genId(); changed=true; }
+        });
+      }
+      if(changed) await setDoc(doc(db,'campagnes',annee),c);
+
+      const bonSnap=await getDocs(collection(db,'campagnes',annee,'bons'));
+      const tasks=[];
+      bonSnap.forEach(docSnap=>{
+        const b=docSnap.data();
+        if(b.pressoirId) return;
+        const d=c.exploitations[b.exploit];
+        const p=d?.pressoirs.find(pp=>pp.nom===b.pressoir);
+        if(p?.id) tasks.push(updateDoc(doc(db,'campagnes',annee,'bons',docSnap.id),{pressoirId:p.id}));
+      });
+      await Promise.all(tasks);
+
+      c.migrePressoirID=true;
+      await setDoc(doc(db,'campagnes',annee),c);
+    }catch(e){ console.error('Migration pressoirId — campagne '+annee+' :',e); }
+  }
+}
+
 // Migration unique : crée un registre global des exploitations (indépendant des années)
 // et ajoute un statut "active" propre à chaque exploitation (au lieu d'un statut unique par campagne).
 // Préserve exactement la situation actuelle : chaque exploitation hérite du statut actif de sa campagne.
@@ -586,6 +621,7 @@ async function init() {
   if(snap.empty){ await creerCampagneDefaut(2025); }
   else { snap.forEach(d=>{ S.campagnes[d.id]=d.data(); }); }
   await migrerParcellesEtRemorques(); // une seule fois par campagne : attribue un ID stable aux parcelles + rattache l'historique
+  await migrerPressoirsEtBons(); // idem pour les pressoirs : ID stable + rattachement des bons existants
   await migrerExploitationsGlobales(); // registre global des exploitations + statut actif par exploitation
   const exploitsDisponibles=Object.keys(S.exploitationsGlobales);
   let dernierChoix=null;
@@ -669,6 +705,13 @@ function matchParc(r,p){
   if(!p) return false;
   if(r.parcelleId) return r.parcelleId===p.id;
   return r.parcelle===p.nom;
+}
+// Un bon correspond à un pressoir si son pressoirId correspond (méthode fiable, insensible au renommage),
+// ou — pour les bons anciens pas encore migrés — si le nom texte correspond encore (méthode historique).
+function matchPressoir(b,p){
+  if(!p) return false;
+  if(b.pressoirId) return b.pressoirId===p.id;
+  return b.pressoir===p.nom;
 }
 const today=()=>new Date().toISOString().split('T')[0];
 function nowDT(){const n=new Date();return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0')+'T'+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');}
@@ -856,7 +899,7 @@ window.updateSaisieParc=function(){
 window.updatePressoirs=function(){
   const e=S.pressExploit||document.getElementById('p-exploit')?.value||Object.keys(camp().exploitations)[0];
   if(camp().exploitations[e])
-    document.getElementById('p-pressoir').innerHTML=camp().exploitations[e].pressoirs.map(p=>`<option>${p}</option>`).join('');
+    document.getElementById('p-pressoir').innerHTML=camp().exploitations[e].pressoirs.map(p=>`<option value="${p.id}">${p.nom}</option>`).join('');
 }
 
 function renderHistRem(){
@@ -933,9 +976,9 @@ function renderPressoir(){
   document.getElementById('recap-poids').innerHTML=pm.reel
     ?`<div class="alert ok"><i class="ti ti-check"></i> Poids réel : <strong>${pm.val.toFixed(2)} kg/caisse</strong> (${fmtKg(totP)} / ${totC} caisses)</div>`
     :`<div class="alert warn"><i class="ti ti-clock"></i> Prévisionnel : <strong>${pm.val} kg/caisse</strong> — en attente des premiers bons</div>`;
-  const pressoirs={};
-  bons.forEach(b=>{pressoirs[b.pressoir]=(pressoirs[b.pressoir]||0)+b.poids;});
-  document.getElementById('recap-pressoirs').innerHTML=Object.entries(pressoirs).map(([k,v])=>`<div class="tot-row"><span class="lbl">${k}</span><span>${fmtKg(v)}</span></div>`).join('');
+  const pressoirsListe=camp().exploitations[e]?.pressoirs||[];
+  const totauxParPressoir=pressoirsListe.map(p=>[p.nom,bons.filter(b=>matchPressoir(b,p)).reduce((a,b)=>a+b.poids,0)]).filter(([,v])=>v>0);
+  document.getElementById('recap-pressoirs').innerHTML=totauxParPressoir.map(([k,v])=>`<div class="tot-row"><span class="lbl">${k}</span><span>${fmtKg(v)}</span></div>`).join('');
   document.getElementById('recap-totaux').innerHTML=`
     <div class="tot-row bold"><span class="lbl">Sorties vignes</span><span>${totRem} caisses</span></div>
     <div class="tot-row bold"><span class="lbl">Caisses pesées</span><span>${totC}</span></div>
@@ -959,7 +1002,9 @@ window.editBon=function(id){
   document.getElementById('p-exploit').value=b.exploit;
   S.pressExploit=b.exploit; updatePressoirs();
   document.getElementById('p-date').value=b.date;
-  document.getElementById('p-pressoir').value=b.pressoir;
+  const pressoirsExploit=camp().exploitations[b.exploit]?.pressoirs||[];
+  const matchP=pressoirsExploit.find(p=>matchPressoir(b,p));
+  document.getElementById('p-pressoir').value=matchP?.id||b.pressoirId||'';
   document.getElementById('p-bon').value=b.bon||'';
   document.getElementById('p-caisses').value=b.caisses;
   document.getElementById('p-poids').value=b.poids; calcKg();
@@ -976,10 +1021,12 @@ window.confirmDeleteBon=function(id){
 }
 window.saveBon=async function(){
   const e=document.getElementById('p-exploit').value,date=document.getElementById('p-date').value;
-  const pressoir=document.getElementById('p-pressoir').value,bon=document.getElementById('p-bon').value;
+  const pressoirSel=document.getElementById('p-pressoir');
+  const pressoirId=pressoirSel.value, pressoir=pressoirSel.selectedOptions[0]?.textContent||'';
+  const bon=document.getElementById('p-bon').value;
   const caisses=parseInt(document.getElementById('p-caisses').value),poids=parseFloat(document.getElementById('p-poids').value);
   if(!date||!caisses||!poids){showToast('Remplis tous les champs obligatoires');return;}
-  const obj={exploit:e,date,pressoir,bon,caisses,poids};
+  const obj={exploit:e,date,pressoir,pressoirId,bon,caisses,poids};
   if(S.editBonId){await updateDoc(doc(db,'campagnes',String(S.annee),'bons',S.editBonId),obj);showToast('Bon modifié · '+(poids/caisses).toFixed(1)+' kg/caisse');}
   else{await addDoc(collection(db,'campagnes',String(S.annee),'bons'),obj);showToast('Bon enregistré · '+(poids/caisses).toFixed(1)+' kg/caisse');}
   cancelBon();
@@ -1637,22 +1684,27 @@ function renderPressoirList(){
     ?'<div style="padding:12px;text-align:center;font-size:13px;color:var(--text3)">Aucun pressoir.</div>'
     :d.pressoirs.map((p,i)=>`
       <div class="parc-row">
-        <div class="parc-info"><div class="parc-nom">${p}</div></div>
-        <button class="icon-btn danger" onclick="confirmDeletePressoir(${i},'${p}')"><i class="ti ti-trash" style="font-size:15px"></i></button>
+        <div class="parc-info"><div class="parc-nom">${p.nom}</div></div>
+        <button class="icon-btn danger" onclick="confirmDeletePressoir(${i})"><i class="ti ti-trash" style="font-size:15px"></i></button>
       </div>`).join('');
 }
 window.savePressoir=async function(){
   const nom=document.getElementById('pressoir-nom').value.trim().toUpperCase();
   if(!nom){showToast('Saisis un nom de pressoir');return;}
   const pressoirs=camp().exploitations[S.subExploit].pressoirs;
-  if(pressoirs.find(p=>p.toUpperCase()===nom)){showToast('Ce pressoir existe déjà');return;}
-  pressoirs.push(nom);
+  if(pressoirs.find(p=>p.nom.toUpperCase()===nom)){showToast('Ce pressoir existe déjà');return;}
+  pressoirs.push({nom,id:genId()});
   await setDoc(doc(db,'campagnes',String(S.annee)),camp());
   document.getElementById('pressoir-nom').value='';
   renderPressoirList(); showToast('"'+nom+'" ajouté');
 }
-window.confirmDeletePressoir=function(i,nom){
-  showModal('Supprimer le pressoir',`Supprimer "${nom}" ? Les bons déjà enregistrés sont conservés.`,'Supprimer','btn-danger',()=>deletePressoir(i,nom));
+window.confirmDeletePressoir=function(i){
+  const e=S.subExploit, p=camp().exploitations[e].pressoirs[i];
+  const nb=Object.values(S.bons).filter(b=>b.exploit===e&&matchPressoir(b,p)).length;
+  const msg=nb>0
+    ? `Supprimer "${p.nom}" ? ${nb} bon(s) déjà enregistré(s) cette campagne ne seront plus comptés dans les totaux affichés (l'historique reste conservé dans la base, mais invisible tant qu'aucun pressoir ne reprend cet ID).`
+    : `Supprimer "${p.nom}" ? Les bons déjà enregistrés sont conservés.`;
+  showModal('Supprimer le pressoir',msg,'Supprimer','btn-danger',()=>deletePressoir(i,p.nom));
 }
 async function deletePressoir(i,nom){
   camp().exploitations[S.subExploit].pressoirs.splice(i,1);
