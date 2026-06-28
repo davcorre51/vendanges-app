@@ -252,13 +252,15 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
     <div class="screen" id="screen-histo">
       <div class="card" style="margin-top:4px">
         <div class="card-title">Comparaison — <span id="histo-exploit-label" style="color:var(--accent)"></span></div>
-        <div id="etabs-histo" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px;scrollbar-width:none;-webkit-overflow-scrolling:touch"></div>
         <div id="histo-dates" style="margin-bottom:10px"></div>
         <div id="histo-stats"></div>
       </div>
       <div class="card"><div class="card-title">Appellation kg/ha par parcelle</div><div id="histo-chart"></div></div>
-      <div class="card"><div class="card-title">Commentaires — <span id="histo-comment-exploit" style="color:var(--accent)"></span></div><div id="histo-comments"></div>
+      <div class="card"><div class="card-title">Commentaires — <span id="histo-comment-exploit" style="color:var(--accent)"></span></div>
+        <div id="histo-comments"></div>
+        <div id="histo-meteo-manuel" style="margin-top:10px"></div>
         <div id="histo-meteo" style="margin-top:10px"></div>
+        <button class="btn btn-secondary" style="margin-top:10px" onclick="openCommentaires(S.exploit)"><i class="ti ti-message"></i> Ajouter / modifier un commentaire</button>
       </div>
       <div class="card"><div class="card-title">Export des données</div><div id="export-section"></div></div>
     </div>
@@ -566,7 +568,6 @@ async function init() {
   S.saisieExploit=S.exploit;
   S.pressExploit=S.exploit;
   S.subExploit=S.exploit;
-  S.histoAnnee=annees[0];
   buildEtabs();
   buildAnneeSelect(); buildSaisieSelects(); renderTableau(); renderConfig();
   subscribeRemorques(); subscribeBons();
@@ -674,7 +675,11 @@ window.showScreen=function(name){
   })[name]?.();
 }
 window.openSubscreen=function(id){document.getElementById(id).classList.add('active');}
-window.closeSubscreen=function(id){document.getElementById(id).classList.remove('active');renderConfig();}
+window.closeSubscreen=function(id){
+  document.getElementById(id).classList.remove('active');
+  const actif=document.querySelector('.screen.active')?.id?.replace('screen-','');
+  ({ tableau:renderTableau, saisie:renderHistRem, pressoir:renderPressoir, histo:renderHisto, config:renderConfig })[actif]?.();
+}
 
 // ── ANNÉE ─────────────────────────────────────────────────────
 function buildAnneeSelect(){
@@ -689,7 +694,15 @@ window.changerAnnee=async function(){
   S.saisieExploit=S.exploit; S.pressExploit=S.exploit; S.subExploit=S.exploit;
   S.remorques={}; S.bons={};
   buildSaisieSelects(); subscribeRemorques(); subscribeBons();
-  buildEtabs(); renderTableau();
+  buildEtabs();
+  const actif=document.querySelector('.screen.active')?.id?.replace('screen-','');
+  ({
+    tableau:renderTableau,
+    saisie:()=>{ updateSaisieParc(); renderHistRem(); },
+    pressoir:()=>{ document.getElementById('press-exploit-label').textContent=expl().nom; updatePressoirs(); renderPressoir(); },
+    histo:renderHisto,
+    config:renderConfig
+  })[actif]?.();
 }
 
 // ── EXPLOIT — sélecteur unique global (visible sous le titre, piloté pour tous les écrans) ──
@@ -1053,19 +1066,8 @@ async function renderMeteoHisto(annee,exploit,datesVend){
 async function renderHisto(){
   document.getElementById('histo-exploit-label').textContent=expl().nom;
   document.getElementById('histo-comment-exploit').textContent=expl().nom;
-  const annees=Object.keys(S.campagnes).sort((a,b)=>b-a);
-  if(!S.histoAnnee) S.histoAnnee=annees[0];
-  document.getElementById('etabs-histo').innerHTML=annees.map((a,i)=>
-    `<button class="etab etab-scroll ${a==S.histoAnnee?'active':''}" onclick="setHistoAnnee(${a},this)">${a}</button>`
-  ).join('');
-  await renderHistoContent(S.histoAnnee);
+  await renderHistoContent(S.annee);
   renderExport();
-}
-window.setHistoAnnee=async function(a,btn){
-  S.histoAnnee=a;
-  document.querySelectorAll('#etabs-histo .etab').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  await renderHistoContent(a);
 }
 async function renderHistoContent(a){
   const c=S.campagnes[a]; if(!c) return;
@@ -1104,7 +1106,7 @@ async function renderHistoContent(a){
   }),1);
   // Commentaires
   const comm=d.commentaires||{};
-  const etiquettes=[['meteo','🌤 Météo'],['qualite','🍇 Qualité'],['incidents','⚠️ Incidents'],['observations','📝 Observations']];
+  const etiquettes=[['qualite','🍇 Qualité'],['incidents','⚠️ Incidents'],['observations','📝 Observations']];
   const commHtml=etiquettes.filter(([k])=>comm[k]&&comm[k].trim()).map(([k,label])=>`
     <div style="margin-bottom:10px">
       <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;font-family:'DM Mono',monospace;margin-bottom:4px">${label}</div>
@@ -1112,7 +1114,13 @@ async function renderHistoContent(a){
     </div>`).join('');
   document.getElementById('histo-comments').innerHTML=commHtml
     ? `<div>${commHtml}</div>`
-    : '<div style="font-size:13px;color:var(--text3);padding:4px">Aucun commentaire enregistré pour cette exploitation.</div>';
+    : (comm.meteo&&comm.meteo.trim() ? '' : '<div style="font-size:13px;color:var(--text3);padding:4px">Aucun commentaire enregistré pour cette exploitation.</div>');
+
+  // Commentaire météo libre — placé juste au-dessus du relevé automatique, pour comparaison directe
+  document.getElementById('histo-meteo-manuel').innerHTML=(comm.meteo&&comm.meteo.trim())
+    ? `<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;font-family:'DM Mono',monospace;margin-bottom:4px">🌤 Météo (saisie libre)</div>
+       <div style="font-size:13px;color:var(--text);line-height:1.6;white-space:pre-wrap">${comm.meteo}</div>`
+    : '';
 
   // Relevé météo auto (1 ligne / jour de vendange, complément des commentaires)
   renderMeteoHisto(a,e,datesVend);
@@ -1197,7 +1205,6 @@ function renderConfig(){
         <button class="btn btn-secondary" style="margin-top:0;flex:1;min-width:80px;padding:8px;font-size:12px" onclick="openGererParcelles('${e}')"><i class="ti ti-plant-2" style="font-size:14px"></i> Parcelles</button>
         <button class="btn btn-secondary" style="margin-top:0;flex:1;min-width:80px;padding:8px;font-size:12px" onclick="openGererPressoirs('${e}')"><i class="ti ti-building-factory" style="font-size:14px"></i> Pressoirs</button>
         <button class="btn btn-secondary" style="margin-top:0;flex:1;min-width:80px;padding:8px;font-size:12px" onclick="openGererParams('${e}')"><i class="ti ti-adjustments" style="font-size:14px"></i> Paramètres</button>
-        <button class="btn btn-secondary" style="margin-top:0;flex:1;min-width:80px;padding:8px;font-size:12px" onclick="openCommentaires('${e}')"><i class="ti ti-message" style="font-size:14px"></i> Commentaires</button>
       </div>
     </div>`).join('');
 }
