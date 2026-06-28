@@ -251,7 +251,7 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
     <!-- HISTORIQUE -->
     <div class="screen" id="screen-histo">
       <div class="card" style="margin-top:4px">
-        <div class="card-title">Comparaison — <span id="histo-exploit-label" style="color:var(--accent)"></span></div>
+        <div class="card-title">Bilan de la vendange — <span id="histo-exploit-label" style="color:var(--accent)"></span></div>
         <div id="histo-dates" style="margin-bottom:10px"></div>
         <div id="histo-stats"></div>
       </div>
@@ -511,6 +511,7 @@ let S = {
   modalCallback: null,
   saisieExploit: null,  // exploitation active dans saisie
   pressExploit: null,   // exploitation active dans pressoir
+  exploitationsGlobales: {}, // registre global des exploitations, indépendant des années
 };
 let manualParcObj = false;
 
@@ -547,6 +548,41 @@ async function migrerParcellesEtRemorques(){
   }
 }
 
+// Migration unique : crée un registre global des exploitations (indépendant des années)
+// et ajoute un statut "active" propre à chaque exploitation (au lieu d'un statut unique par campagne).
+// Préserve exactement la situation actuelle : chaque exploitation hérite du statut actif de sa campagne.
+async function migrerExploitationsGlobales(){
+  const regSnap=await getDocs(collection(db,'exploitations_globales'));
+  S.exploitationsGlobales={};
+  regSnap.forEach(d=>{ S.exploitationsGlobales[d.id]=d.data(); });
+
+  // 1. Construire le registre global s'il n'existe pas encore, à partir des campagnes connues
+  const nomsConnus={};
+  for(const annee of Object.keys(S.campagnes)){
+    const c=S.campagnes[annee];
+    for(const e of Object.keys(c.exploitations||{})){
+      nomsConnus[e]=c.exploitations[e].nom; // la version la plus récente écrasera les précédentes
+    }
+  }
+  for(const e of Object.keys(nomsConnus)){
+    if(!S.exploitationsGlobales[e]){
+      const data={nom:nomsConnus[e]};
+      await setDoc(doc(db,'exploitations_globales',e),data);
+      S.exploitationsGlobales[e]=data;
+    }
+  }
+
+  // 2. Ajouter un statut "active" par exploitation (hérité du statut de campagne tant que rien n'a encore divergé)
+  for(const annee of Object.keys(S.campagnes)){
+    const c=S.campagnes[annee];
+    let changed=false;
+    for(const e of Object.keys(c.exploitations||{})){
+      if(c.exploitations[e].active===undefined){ c.exploitations[e].active=!!c.active; changed=true; }
+    }
+    if(changed){ try{ await setDoc(doc(db,'campagnes',annee),c); }catch(err){ console.error('Migration active par exploitation — campagne '+annee+' :',err); } }
+  }
+}
+
 async function init() {
   try {
     await attendreAuth();
@@ -558,6 +594,7 @@ async function init() {
   if(snap.empty){ await creerCampagneDefaut(2025); }
   else { snap.forEach(d=>{ S.campagnes[d.id]=d.data(); }); }
   await migrerParcellesEtRemorques(); // une seule fois par campagne : attribue un ID stable aux parcelles + rattache l'historique
+  await migrerExploitationsGlobales(); // registre global des exploitations + statut actif par exploitation
   const annees = Object.keys(S.campagnes).map(Number).sort((a,b)=>b-a);
   const active = annees.find(a=>S.campagnes[a]?.active)||annees[0];
   S.annee=active; S.campagne=S.campagnes[active];
