@@ -344,6 +344,25 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
 </div>
 
 <!-- SOUS-ÉCRAN PARAMÈTRES EXPLOITATION -->
+<div class="subscreen" id="sub-modif-exploit">
+  <div class="subscreen-topbar">
+    <button class="back-btn" onclick="closeSubscreen('sub-modif-exploit')"><i class="ti ti-arrow-left"></i> Config</button>
+    <div><div class="subscreen-title">Modifier l'exploitation</div><div class="subscreen-sub">Nom, adresse, coordonnées</div></div>
+  </div>
+  <div class="subscreen-body">
+    <div class="card">
+      <div class="form-group"><label class="form-label">Nom de l'exploitation</label><input type="text" id="modif-exp-nom" placeholder="ex : CORRE-VADEZ"></div>
+      <div class="form-group"><label class="form-label">Adresse / commune</label><input type="text" id="modif-exp-adresse" placeholder="ex : 12 rue des Vignes, 51200 Épernay"></div>
+      <div class="form-group" style="display:flex;gap:8px">
+        <div style="flex:1"><label class="form-label">Latitude <span style="color:var(--text3);font-weight:400">(siège, optionnel)</span></label><input type="number" id="modif-exp-lat" placeholder="ex : 48.9123" step="0.000001"></div>
+        <div style="flex:1"><label class="form-label">Longitude <span style="color:var(--text3);font-weight:400">(siège, optionnel)</span></label><input type="number" id="modif-exp-lon" placeholder="ex : 3.6789" step="0.000001"></div>
+      </div>
+      <div class="hint" style="color:var(--text3)">Le nom est répercuté sur toutes les campagnes existantes. L'appellation et le poids/caisse se modifient dans "Paramètres".</div>
+      <button class="btn btn-success" style="margin-top:12px" onclick="saveModifExploit()"><i class="ti ti-check"></i> Enregistrer</button>
+    </div>
+  </div>
+</div>
+
 <div class="subscreen" id="sub-params">
   <div class="subscreen-topbar">
     <button class="back-btn" onclick="closeSubscreen('sub-params')"><i class="ti ti-arrow-left"></i> Config</button>
@@ -503,6 +522,7 @@ let S = {
   saisieExploit: null,  // exploitation active dans saisie
   pressExploit: null,   // exploitation active dans pressoir
   exploitationsGlobales: {}, // registre global des exploitations, indépendant des années
+  modifExploitEn: null,
 };
 let manualParcObj = false;
 
@@ -1232,6 +1252,7 @@ function renderConfig(){
         <div style="font-size:11px;color:var(--text2);font-family:'DM Mono',monospace">${d.parcelles.length} parcelles · ${d.parcelles.reduce((a,p)=>a+p.surface,0).toFixed(2)} ha · rdt ${d.rendement||camp().rendement} kg/ha · ${d.poidsPrev||camp().poidsPrev} kg/caisse</div>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-secondary" style="margin-top:0;flex:1;min-width:80px;padding:8px;font-size:12px" onclick="openModifExploit('${e}')"><i class="ti ti-pencil" style="font-size:14px"></i> Modifier</button>
         <button class="btn btn-secondary" style="margin-top:0;flex:1;min-width:80px;padding:8px;font-size:12px" onclick="openGererParcelles('${e}')"><i class="ti ti-plant-2" style="font-size:14px"></i> Parcelles</button>
         <button class="btn btn-secondary" style="margin-top:0;flex:1;min-width:80px;padding:8px;font-size:12px" onclick="openGererPressoirs('${e}')"><i class="ti ti-building-factory" style="font-size:14px"></i> Pressoirs</button>
         <button class="btn btn-secondary" style="margin-top:0;flex:1;min-width:80px;padding:8px;font-size:12px" onclick="openGererParams('${e}')"><i class="ti ti-adjustments" style="font-size:14px"></i> Paramètres</button>
@@ -1294,50 +1315,132 @@ window.renderSimulation=function(){
 }
 
 window.demanderNouvelleCampagne=function(){
-  const prochaine=Math.max(...Object.keys(S.campagnes).map(Number))+1;
-  if(S.campagnes[prochaine]){showToast('Campagne '+prochaine+' déjà créée');return;}
+  const e=S.exploit;
+  const anns=anneesDispoPourExploit(e);
+  const prochaine=Math.max(...anns)+1;
+  if(S.campagnes[prochaine]?.exploitations?.[e]){showToast('Campagne '+prochaine+' déjà créée pour '+expl().nom);return;}
   showModal(
-    'Créer la campagne '+prochaine,
-    `La campagne ${prochaine} sera créée en copiant les exploitations, parcelles, pressoirs et paramètres de ${S.annee}. La campagne ${S.annee} passera au statut "Terminée". Confirmer ?`,
+    'Créer la campagne '+prochaine+' — '+expl().nom,
+    `La campagne ${prochaine} sera créée pour ${expl().nom} uniquement, en copiant ses parcelles, pressoirs et paramètres depuis ${S.annee}. La campagne ${S.annee} de ${expl().nom} passera au statut "Terminée" (ses données restent intactes). L'autre exploitation n'est pas affectée. Confirmer ?`,
     'Créer','btn-success',()=>nouvelleCampagne(prochaine)
   );
 }
 async function nouvelleCampagne(prochaine){
-  const anneeRef=Math.max(...Object.keys(S.campagnes).map(Number));
+  const e=S.exploit;
+  const anneeRef=S.annee; // dernière année active de cette exploitation précisément
   const src=S.campagnes[anneeRef];
-  const newCamp={rendement:src.rendement,poidsPrev:src.poidsPrev,active:true,exploitations:JSON.parse(JSON.stringify(src.exploitations))};
-  src.active=false;
+  const srcExploit=JSON.parse(JSON.stringify(src.exploitations[e]));
+  srcExploit.active=false;
+  src.exploitations[e]=srcExploit;
   await setDoc(doc(db,'campagnes',String(anneeRef)),src);
-  await setDoc(doc(db,'campagnes',String(prochaine)),newCamp);
-  S.campagnes[prochaine]=newCamp; S.annee=prochaine; S.campagne=newCamp;
-  S.exploit=Object.keys(newCamp.exploitations)[0];
-  S.saisieExploit=S.exploit; S.pressExploit=S.exploit;
+
+  // Si l'année cible existe déjà (créée par l'autre exploitation), on ajoute juste notre nœud dedans
+  let cible=S.campagnes[prochaine];
+  if(!cible){
+    cible={rendement:src.rendement,poidsPrev:src.poidsPrev,exploitations:{}};
+    S.campagnes[prochaine]=cible;
+  }
+  const nouvelExploit=JSON.parse(JSON.stringify(src.exploitations[e]));
+  nouvelExploit.active=true;
+  cible.exploitations[e]=nouvelExploit;
+  await setDoc(doc(db,'campagnes',String(prochaine)),cible);
+
+  S.annee=prochaine; S.campagne=cible;
+  S.saisieExploit=e; S.pressExploit=e; S.subExploit=e;
   S.remorques={}; S.bons={};
-  buildAnneeSelect(); subscribeRemorques(); subscribeBons();
+  buildAnneeSelect(); subscribeRemorques(); subscribeBons(); buildSaisieSelects();
   renderConfig(); renderTableau();
-  showToast('✓ Campagne '+prochaine+' créée !');
+  showToast('✓ Campagne '+prochaine+' créée pour '+expl().nom+' !');
 }
 window.confirmSupprimerCampagne=function(a){
-  showModal('Supprimer la campagne '+a,`Supprimer définitivement la campagne ${a} et toutes ses données ? Action irréversible.`,'Supprimer','btn-danger',()=>supprimerCampagne(a));
+  const e=S.exploit;
+  const autresExploitsPresents=Object.keys(S.campagnes[a]?.exploitations||{}).filter(x=>x!==e);
+  const msg=autresExploitsPresents.length
+    ? `Supprimer la campagne ${a} de ${expl().nom} uniquement ? Les données de ${autresExploitsPresents.map(x=>S.exploitationsGlobales[x]?.nom||x).join(', ')} pour cette même année ne sont pas affectées. Action irréversible pour ${expl().nom}.`
+    : `Supprimer définitivement la campagne ${a} et toutes ses données ? Action irréversible.`;
+  showModal('Supprimer la campagne '+a,msg,'Supprimer','btn-danger',()=>supprimerCampagne(a));
 }
 async function supprimerCampagne(a){
+  const e=S.exploit;
+  const c=S.campagnes[a];
+  if(!c) return;
+
+  // On ne retire que les remorques/bons de CETTE exploitation pour cette année
   const [rs,bs]=await Promise.all([getDocs(collection(db,'campagnes',String(a),'remorques')),getDocs(collection(db,'campagnes',String(a),'bons'))]);
-  await Promise.all([...rs.docs.map(d=>deleteDoc(d.ref)),...bs.docs.map(d=>deleteDoc(d.ref))]);
-  await deleteDoc(doc(db,'campagnes',String(a)));
-  delete S.campagnes[a];
-  const annees=Object.keys(S.campagnes).map(Number).sort((a,b)=>b-a);
-  if(!annees.length){await creerCampagneDefaut(new Date().getFullYear());}
-  const active=annees.find(x=>S.campagnes[x]?.active)||annees[0];
-  S.annee=active; S.campagne=S.campagnes[active];
-  S.exploit=Object.keys(S.campagne.exploitations)[0];
-  S.saisieExploit=S.exploit; S.pressExploit=S.exploit;
+  await Promise.all([
+    ...rs.docs.filter(d=>d.data().exploit===e).map(d=>deleteDoc(d.ref)),
+    ...bs.docs.filter(d=>d.data().exploit===e).map(d=>deleteDoc(d.ref))
+  ]);
+
+  const autresExploits=Object.keys(c.exploitations||{}).filter(x=>x!==e);
+  if(autresExploits.length){
+    // D'autres exploitations utilisent encore ce document d'année : on retire juste notre nœud
+    delete c.exploitations[e];
+    await setDoc(doc(db,'campagnes',String(a)),c);
+  }else{
+    // Plus personne dans ce document d'année : on peut le supprimer entièrement
+    await deleteDoc(doc(db,'campagnes',String(a)));
+    delete S.campagnes[a];
+  }
+
+  // Réactive la dernière année restante de cette exploitation (si elle existe)
+  const anneesRestantes=anneesDispoPourExploit(e);
+  if(anneesRestantes.length){
+    const derniere=anneesRestantes[0];
+    S.campagnes[derniere].exploitations[e].active=true;
+    await setDoc(doc(db,'campagnes',String(derniere)),S.campagnes[derniere]);
+    S.annee=derniere; S.campagne=S.campagnes[derniere];
+  }else{
+    // Cas extrême : cette exploitation n'a plus aucune campagne. On lui recrée une base à l'année en cours.
+    const anneeDefaut=new Date().getFullYear();
+    if(!S.campagnes[anneeDefaut]) S.campagnes[anneeDefaut]={rendement:9120,poidsPrev:11,exploitations:{}};
+    S.campagnes[anneeDefaut].exploitations[e]={nom:expl().nom,rendement:9120,poidsPrev:11,active:true,parcelles:[],pressoirs:[],commentaires:{}};
+    await setDoc(doc(db,'campagnes',String(anneeDefaut)),S.campagnes[anneeDefaut]);
+    S.annee=anneeDefaut; S.campagne=S.campagnes[anneeDefaut];
+  }
   S.remorques={}; S.bons={};
-  buildAnneeSelect(); subscribeRemorques(); subscribeBons();
+  buildAnneeSelect(); subscribeRemorques(); subscribeBons(); buildSaisieSelects();
   renderConfig(); renderTableau();
-  showToast('Campagne '+a+' supprimée');
+  showToast('Campagne '+a+' supprimée pour '+expl().nom);
 }
 
 // ── PARAMÈTRES PAR EXPLOITATION ───────────────────────────────
+window.openModifExploit=function(e){
+  S.modifExploitEn=e;
+  const reg=S.exploitationsGlobales[e]||{};
+  document.getElementById('modif-exp-nom').value=reg.nom||camp().exploitations[e].nom;
+  document.getElementById('modif-exp-adresse').value=reg.adresse||'';
+  document.getElementById('modif-exp-lat').value=reg.lat!=null?reg.lat:'';
+  document.getElementById('modif-exp-lon').value=reg.lon!=null?reg.lon:'';
+  openSubscreen('sub-modif-exploit');
+}
+window.saveModifExploit=async function(){
+  const e=S.modifExploitEn;
+  const nom=document.getElementById('modif-exp-nom').value.trim();
+  const adresse=document.getElementById('modif-exp-adresse').value.trim();
+  const latRaw=document.getElementById('modif-exp-lat').value, lonRaw=document.getElementById('modif-exp-lon').value;
+  const lat=latRaw!==''?parseFloat(latRaw):null, lon=lonRaw!==''?parseFloat(lonRaw):null;
+  if(!nom){ showToast('Le nom ne peut pas être vide'); return; }
+
+  // Registre global — source de vérité pour nom/adresse/coordonnées du siège
+  const regData={nom,adresse,lat,lon};
+  await setDoc(doc(db,'exploitations_globales',e),regData);
+  S.exploitationsGlobales[e]=regData;
+
+  // Répercute le nouveau nom sur toutes les campagnes existantes contenant cette exploitation
+  // (le nom y est dupliqué pour l'affichage rapide ; on le garde synchronisé partout)
+  for(const annee of Object.keys(S.campagnes)){
+    const c=S.campagnes[annee];
+    if(c.exploitations?.[e] && c.exploitations[e].nom!==nom){
+      c.exploitations[e].nom=nom;
+      try{ await setDoc(doc(db,'campagnes',annee),c); }catch(err){ console.error('Sync nom exploitation — campagne '+annee+' :',err); }
+    }
+  }
+
+  showToast('"'+nom+'" mise à jour');
+  closeSubscreen('sub-modif-exploit');
+}
+
 window.openGererParams=function(e){
   S.subExploit=e;
   const d=camp().exploitations[e];
