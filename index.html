@@ -187,11 +187,11 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
       <span class="annee-chevron">▾</span>
     </div>
   </div>
+  <div class="etabs" style="margin:4px 16px" id="etabs-global"></div>
 
   <div class="screens">
     <!-- TABLEAU -->
     <div class="screen active" id="screen-tableau">
-      <div class="etabs" style="margin-top:4px" id="etabs-tableau"></div>
       <div id="poids-badge-wrap"></div>
       <div class="stat-row" id="stats-row"></div>
       <div class="card">
@@ -211,7 +211,7 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
     <div class="screen" id="screen-saisie">
       <div class="card" style="margin-top:4px" id="form-rem">
         <div class="card-title" id="form-rem-title">Nouvelle remorque</div>
-        <div class="form-group"><label class="form-label">Exploitation</label><select id="s-exploit" onchange="onSaisieExploitChange()"></select></div>
+        <div class="form-group" style="display:none"><label class="form-label">Exploitation</label><select id="s-exploit" onchange="onSaisieExploitChange()"></select></div>
         <div class="form-group"><label class="form-label">Parcelle</label><select id="s-parcelle"></select></div>
         <div class="form-group"><label class="form-label">Nombre de caisses</label><input type="number" id="s-caisses" placeholder="ex : 32" min="1"></div>
         <div class="form-group"><label class="form-label">Date et heure</label><input type="datetime-local" id="s-dt"></div>
@@ -228,7 +228,7 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
     <div class="screen" id="screen-pressoir">
       <div class="card" style="margin-top:4px" id="form-bon">
         <div class="card-title" id="form-bon-title">Nouveau bon pressoir</div>
-        <div class="form-group"><label class="form-label">Exploitation</label><select id="p-exploit" onchange="onPressExploitChange()"></select></div>
+        <div class="form-group" style="display:none"><label class="form-label">Exploitation</label><select id="p-exploit" onchange="onPressExploitChange()"></select></div>
         <div class="form-group"><label class="form-label">Date du bon</label><input type="date" id="p-date"></div>
         <div class="form-group"><label class="form-label">Pressoir</label><select id="p-pressoir"></select></div>
         <div class="form-group"><label class="form-label">N° bon</label><input type="text" id="p-bon" placeholder="ex : B019"></div>
@@ -559,10 +559,15 @@ async function init() {
   const annees = Object.keys(S.campagnes).map(Number).sort((a,b)=>b-a);
   const active = annees.find(a=>S.campagnes[a]?.active)||annees[0];
   S.annee=active; S.campagne=S.campagnes[active];
-  S.exploit=Object.keys(S.campagne.exploitations)[0];
+  const exploitsDisponibles=Object.keys(S.campagne.exploitations);
+  let dernierChoix=null;
+  try{ dernierChoix=localStorage.getItem('vendanges_exploit'); }catch(err){ /* ignore */ }
+  S.exploit=(dernierChoix&&exploitsDisponibles.includes(dernierChoix))?dernierChoix:exploitsDisponibles[0];
   S.saisieExploit=S.exploit;
   S.pressExploit=S.exploit;
+  S.subExploit=S.exploit;
   S.histoAnnee=annees[0];
+  buildEtabs();
   buildAnneeSelect(); buildSaisieSelects(); renderTableau(); renderConfig();
   subscribeRemorques(); subscribeBons();
 }
@@ -679,31 +684,43 @@ window.changerAnnee=async function(){
   S.annee=parseInt(document.getElementById('annee-sel').value);
   if(!S.campagnes[S.annee]){const snap=await getDoc(doc(db,'campagnes',String(S.annee)));if(snap.exists())S.campagnes[S.annee]=snap.data();}
   S.campagne=S.campagnes[S.annee];
-  S.exploit=Object.keys(S.campagne.exploitations)[0];
-  S.saisieExploit=S.exploit; S.pressExploit=S.exploit;
+  const exploitsDisponibles=Object.keys(S.campagne.exploitations);
+  S.exploit=exploitsDisponibles.includes(S.exploit)?S.exploit:exploitsDisponibles[0];
+  S.saisieExploit=S.exploit; S.pressExploit=S.exploit; S.subExploit=S.exploit;
   S.remorques={}; S.bons={};
   buildSaisieSelects(); subscribeRemorques(); subscribeBons();
-  buildEtabs('etabs-tableau'); renderTableau();
+  buildEtabs(); renderTableau();
 }
 
-// ── EXPLOIT TABS ──────────────────────────────────────────────
-function buildEtabs(id){
-  document.getElementById(id).innerHTML=Object.keys(camp().exploitations).map((e,i)=>
-    `<button class="etab ${e===S.exploit?'active':''}" onclick="setExploit('${e}','${id}')">${camp().exploitations[e].nom}</button>`
+// ── EXPLOIT — sélecteur unique global (visible sous le titre, piloté pour tous les écrans) ──
+function buildEtabs(){
+  document.getElementById('etabs-global').innerHTML=Object.keys(camp().exploitations).map(e=>
+    `<button class="etab ${e===S.exploit?'active':''}" onclick="setExploit('${e}')">${camp().exploitations[e].nom}</button>`
   ).join('');
 }
-window.setExploit=function(e,tabsId){
-  S.exploit=e;
-  document.querySelectorAll('#'+tabsId+' .etab').forEach((b,i)=>b.classList.toggle('active',Object.keys(camp().exploitations)[i]===e));
+window.setExploit=function(e){
+  S.exploit=e; S.saisieExploit=e; S.pressExploit=e; S.subExploit=e;
+  try{ localStorage.setItem('vendanges_exploit',e); }catch(err){ /* ignore */ }
+  buildEtabs();
   document.getElementById('topbar-sub').textContent=expl().nom+' · '+S.annee;
-  renderTableau();
-  if(document.getElementById('screen-histo').classList.contains('active')) renderHisto();
+  // Resynchronise les sélecteurs internes (cachés) qui pilotent encore certaines fonctions historiques
+  const selS=document.getElementById('s-exploit'); if(selS) selS.value=e;
+  const selP=document.getElementById('p-exploit'); if(selP) selP.value=e;
+  // Ré-affiche l'écran actuellement ouvert avec la nouvelle exploitation
+  const actif=document.querySelector('.screen.active')?.id?.replace('screen-','');
+  ({
+    tableau:renderTableau,
+    saisie:()=>{ updateSaisieParc(); renderHistRem(); },
+    pressoir:()=>{ document.getElementById('press-exploit-label').textContent=expl().nom; updatePressoirs(); renderPressoir(); },
+    histo:renderHisto,
+    config:renderConfig
+  })[actif]?.();
 }
 
 // ── TABLEAU ───────────────────────────────────────────────────
 function renderTableau(){
   if(!S.campagne) return;
-  buildEtabs('etabs-tableau');
+  buildEtabs();
   const e=S.exploit, d=expl(e), pm=poidsReel(e);
   const totS=d.parcelles.reduce((a,p)=>a+totSorties(e,p),0);
   const totO=d.parcelles.reduce((a,p)=>a+objDynamique(e,p),0);
@@ -1512,7 +1529,7 @@ async function deleteExploitation(e){
       S.pressExploit=S.exploit;
     }
   }
-  renderExploitList(); renderConfig(); buildSaisieSelects(); buildEtabs('etabs-tableau'); renderTableau();
+  renderExploitList(); renderConfig(); buildSaisieSelects(); buildEtabs(); renderTableau();
   showToast('"'+nom+'" retirée de la campagne '+S.annee);
 }
 
