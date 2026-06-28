@@ -595,13 +595,12 @@ async function init() {
   else { snap.forEach(d=>{ S.campagnes[d.id]=d.data(); }); }
   await migrerParcellesEtRemorques(); // une seule fois par campagne : attribue un ID stable aux parcelles + rattache l'historique
   await migrerExploitationsGlobales(); // registre global des exploitations + statut actif par exploitation
-  const annees = Object.keys(S.campagnes).map(Number).sort((a,b)=>b-a);
-  const active = annees.find(a=>S.campagnes[a]?.active)||annees[0];
-  S.annee=active; S.campagne=S.campagnes[active];
-  const exploitsDisponibles=Object.keys(S.campagne.exploitations);
+  const exploitsDisponibles=Object.keys(S.exploitationsGlobales);
   let dernierChoix=null;
   try{ dernierChoix=localStorage.getItem('vendanges_exploit'); }catch(err){ /* ignore */ }
   S.exploit=(dernierChoix&&exploitsDisponibles.includes(dernierChoix))?dernierChoix:exploitsDisponibles[0];
+  S.annee=anneeActiveExploit(S.exploit);
+  S.campagne=S.campagnes[S.annee];
   S.saisieExploit=S.exploit;
   S.pressExploit=S.exploit;
   S.subExploit=S.exploit;
@@ -718,16 +717,22 @@ window.closeSubscreen=function(id){
   ({ tableau:renderTableau, saisie:renderHistRem, pressoir:renderPressoir, histo:renderHisto, config:renderConfig })[actif]?.();
 }
 
-// ── ANNÉE ─────────────────────────────────────────────────────
+// ── ANNÉE — contextuelle à l'exploitation sélectionnée ─────────
+function anneesDispoPourExploit(e){
+  return Object.keys(S.campagnes).filter(a=>S.campagnes[a].exploitations?.[e]).map(Number).sort((a,b)=>b-a);
+}
+function anneeActiveExploit(e){
+  const anns=anneesDispoPourExploit(e);
+  return anns.find(a=>S.campagnes[a].exploitations[e].active) ?? anns[0];
+}
 function buildAnneeSelect(){
-  document.getElementById('annee-sel').innerHTML=Object.keys(S.campagnes).sort((a,b)=>b-a).map(a=>`<option value="${a}" ${a==S.annee?'selected':''}>${a}</option>`).join('');
+  const anns=anneesDispoPourExploit(S.exploit);
+  document.getElementById('annee-sel').innerHTML=anns.map(a=>`<option value="${a}" ${a==S.annee?'selected':''}>${a}</option>`).join('');
 }
 window.changerAnnee=async function(){
   S.annee=parseInt(document.getElementById('annee-sel').value);
   if(!S.campagnes[S.annee]){const snap=await getDoc(doc(db,'campagnes',String(S.annee)));if(snap.exists())S.campagnes[S.annee]=snap.data();}
   S.campagne=S.campagnes[S.annee];
-  const exploitsDisponibles=Object.keys(S.campagne.exploitations);
-  S.exploit=exploitsDisponibles.includes(S.exploit)?S.exploit:exploitsDisponibles[0];
   S.saisieExploit=S.exploit; S.pressExploit=S.exploit; S.subExploit=S.exploit;
   S.remorques={}; S.bons={};
   buildSaisieSelects(); subscribeRemorques(); subscribeBons();
@@ -744,18 +749,24 @@ window.changerAnnee=async function(){
 
 // ── EXPLOIT — sélecteur unique global (visible sous le titre, piloté pour tous les écrans) ──
 function buildEtabs(){
-  document.getElementById('etabs-global').innerHTML=Object.keys(camp().exploitations).map(e=>
-    `<button class="etab ${e===S.exploit?'active':''}" onclick="setExploit('${e}')">${camp().exploitations[e].nom}</button>`
+  document.getElementById('etabs-global').innerHTML=Object.keys(S.exploitationsGlobales).map(e=>
+    `<button class="etab ${e===S.exploit?'active':''}" onclick="setExploit('${e}')">${S.exploitationsGlobales[e].nom}</button>`
   ).join('');
 }
 window.setExploit=function(e){
   S.exploit=e; S.saisieExploit=e; S.pressExploit=e; S.subExploit=e;
   try{ localStorage.setItem('vendanges_exploit',e); }catch(err){ /* ignore */ }
+  // Chaque exploitation a sa propre année active : on bascule automatiquement sur la sienne
+  const anneeCible=anneeActiveExploit(e);
+  const anneeChange=anneeCible!==S.annee;
+  S.annee=anneeCible; S.campagne=S.campagnes[anneeCible];
+  buildAnneeSelect();
   buildEtabs();
   document.getElementById('topbar-sub').textContent=expl().nom+' · '+S.annee;
   // Resynchronise les sélecteurs internes (cachés) qui pilotent encore certaines fonctions historiques
   const selS=document.getElementById('s-exploit'); if(selS) selS.value=e;
   const selP=document.getElementById('p-exploit'); if(selP) selP.value=e;
+  if(anneeChange){ S.remorques={}; S.bons={}; subscribeRemorques(); subscribeBons(); buildSaisieSelects(); }
   // Ré-affiche l'écran actuellement ouvert avec la nouvelle exploitation
   const actif=document.querySelector('.screen.active')?.id?.replace('screen-','');
   ({
