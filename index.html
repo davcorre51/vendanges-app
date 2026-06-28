@@ -1252,7 +1252,6 @@ function renderConfig(){
         <div style="font-size:11px;color:var(--text2);font-family:'DM Mono',monospace">${d.parcelles.length} parcelles · ${d.parcelles.reduce((a,p)=>a+p.surface,0).toFixed(2)} ha · rdt ${d.rendement||camp().rendement} kg/ha · ${d.poidsPrev||camp().poidsPrev} kg/caisse</div>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn btn-secondary" style="margin-top:0;flex:1;min-width:80px;padding:8px;font-size:12px" onclick="openModifExploit('${e}')"><i class="ti ti-pencil" style="font-size:14px"></i> Modifier</button>
         <button class="btn btn-secondary" style="margin-top:0;flex:1;min-width:80px;padding:8px;font-size:12px" onclick="openGererParcelles('${e}')"><i class="ti ti-plant-2" style="font-size:14px"></i> Parcelles</button>
         <button class="btn btn-secondary" style="margin-top:0;flex:1;min-width:80px;padding:8px;font-size:12px" onclick="openGererPressoirs('${e}')"><i class="ti ti-building-factory" style="font-size:14px"></i> Pressoirs</button>
         <button class="btn btn-secondary" style="margin-top:0;flex:1;min-width:80px;padding:8px;font-size:12px" onclick="openGererParams('${e}')"><i class="ti ti-adjustments" style="font-size:14px"></i> Paramètres</button>
@@ -1439,6 +1438,7 @@ window.saveModifExploit=async function(){
 
   showToast('"'+nom+'" mise à jour');
   closeSubscreen('sub-modif-exploit');
+  renderExploitList(); renderConfig(); buildEtabs(); buildSaisieSelects();
 }
 
 window.openGererParams=function(e){
@@ -1614,6 +1614,7 @@ function renderExploitList(){
           <div class="parc-nom">${d.nom}</div>
           <div class="parc-detail">${d.parcelles.length} parcelles · ${d.parcelles.reduce((a,p)=>a+p.surface,0).toFixed(2)} ha · ${d.rendement||camp().rendement} kg/ha</div>
         </div>
+        <button class="icon-btn" onclick="openModifExploit('${e}')" aria-label="Modifier ${d.nom}"><i class="ti ti-pencil" style="font-size:15px"></i></button>
         <button class="icon-btn danger" onclick="confirmDeleteExploitation('${e}')" aria-label="Supprimer ${d.nom}"><i class="ti ti-trash" style="font-size:15px"></i></button>
       </div>`).join('');
   document.getElementById('sub-exploit-sub').textContent=exploits.length+' exploitation(s) — campagne '+S.annee;
