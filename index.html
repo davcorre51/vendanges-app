@@ -268,21 +268,12 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
     <!-- CONFIG -->
     <div class="screen" id="screen-config">
       <div class="card" style="margin-top:4px">
-        <div class="card-title">Campagnes</div>
-        <div class="form-group" style="margin-bottom:10px">
-          <label class="form-label">Sélectionner une campagne</label>
-          <div style="position:relative">
-            <select id="cfg-camp-sel" onchange="onCampagneSelectChange()" style="padding-right:32px"></select>
-            <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none;font-size:10px;color:var(--text3)">▾</span>
-          </div>
-        </div>
+        <div class="card-title">Campagne — <span id="cfg-camp-exploit-lbl" style="color:var(--accent)"></span></div>
         <div id="config-campagne-detail"></div>
         <button class="btn btn-success" id="btn-new-camp" onclick="demanderNouvelleCampagne()"><i class="ti ti-plus"></i> Créer une nouvelle campagne</button>
       </div>
       <div class="card">
         <div class="card-title">Simulation objectifs — <span id="cfg-annee-lbl" style="color:var(--accent)"></span></div>
-        <div class="form-group" style="margin-top:4px"><label class="form-label">Exploitation</label>
-          <select id="cfg-sim-exploit" onchange="renderSimulation()"></select></div>
         <div id="cfg-sim"></div>
       </div>
       <div class="card">
@@ -1225,21 +1216,12 @@ function dlCSV(csv,filename){
 // ── CONFIG ────────────────────────────────────────────────────
 function renderConfig(){
   if(!S.campagne) return;
-  const annees=Object.keys(S.campagnes).sort((a,b)=>b-a);
-  // Menu déroulant campagnes
-  const selCamp=document.getElementById('cfg-camp-sel');
-  selCamp.innerHTML=annees.map(a=>{
-    const c=S.campagnes[a];
-    return `<option value="${a}" ${a==S.annee?'selected':''}>${a} — ${c.active?'Active':'Terminée'}</option>`;
-  }).join('');
+  document.getElementById('cfg-camp-exploit-lbl').textContent=expl().nom;
   renderCampagneDetail(S.annee);
-  const prochaine=Math.max(...annees.map(Number))+1;
+  const anns=anneesDispoPourExploit(S.exploit);
+  const prochaine=Math.max(...anns)+1;
   document.getElementById('btn-new-camp').innerHTML=`<i class="ti ti-plus"></i> Créer la campagne ${prochaine}`;
   document.getElementById('cfg-annee-lbl').textContent=S.annee;
-
-  // Simulation
-  const exploits=Object.keys(camp().exploitations);
-  document.getElementById('cfg-sim-exploit').innerHTML=exploits.map(e=>`<option value="${e}">${camp().exploitations[e].nom}</option>`).join('');
   renderSimulation();
 
   // Exploitations
@@ -1257,15 +1239,12 @@ function renderConfig(){
     </div>`).join('');
 }
 
-window.onCampagneSelectChange=function(){
-  const a=parseInt(document.getElementById('cfg-camp-sel').value);
-  renderCampagneDetail(a);
-}
-
 function renderCampagneDetail(a){
   const c=S.campagnes[a];
   if(!c) return;
-  const delBtn=c.active?`<button class="btn btn-danger" style="margin-top:8px" onclick="confirmSupprimerCampagne(${a})"><i class="ti ti-trash"></i> Supprimer la campagne ${a}</button>`:'';
+  const ex=c.exploitations[S.exploit];
+  const estActive=ex?ex.active:!!c.active;
+  const delBtn=estActive?`<button class="btn btn-danger" style="margin-top:8px" onclick="confirmSupprimerCampagne(${a})"><i class="ti ti-trash"></i> Supprimer la campagne ${a}</button>`:'';
   const details=Object.values(c.exploitations).map(e=>`
     <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid var(--border)">
       <span style="color:var(--text2)">${e.nom}</span>
@@ -1275,7 +1254,7 @@ function renderCampagneDetail(a){
     <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:10px 12px;border:1px solid var(--border);margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <span style="font-size:13px;font-weight:600;color:var(--text)">Campagne ${a}</span>
-        <span class="badge ${c.active?'actif':'termine'}">${c.active?'Active':'Terminée'}</span>
+        <span class="badge ${estActive?'actif':'termine'}">${estActive?'Active':'Terminée'}</span>
       </div>
       ${details}
     </div>
@@ -1292,7 +1271,7 @@ window.toggleAccord=function(id){
 }
 
 window.renderSimulation=function(){
-  const e=document.getElementById('cfg-sim-exploit')?.value||Object.keys(camp().exploitations)[0];
+  const e=S.exploit;
   const d=camp().exploitations[e];
   const pm=poidsReel(e);
   const rdt=d.rendement||camp().rendement;
