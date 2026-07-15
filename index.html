@@ -805,7 +805,7 @@ window.changerAnnee=async function(){
 // ── EXPLOIT — sélecteur unique global (visible sous le titre, piloté pour tous les écrans) ──
 function buildEtabs(){
   document.getElementById('etabs-global').innerHTML=Object.keys(S.exploitationsGlobales).map(e=>
-    `<button class="etab ${e===S.exploit?'active':''}" onclick="setExploit('${e}')">${S.exploitationsGlobales[e].nom}</button>`
+    `<button class="etab ${e===S.exploit?'active':''}" onclick="setExploit('${e}')">${esc(S.exploitationsGlobales[e].nom)}</button>`
   ).join('');
 }
 window.setExploit=function(e){
@@ -867,7 +867,7 @@ function renderTableau(){
     const rha=s>0?Math.round(s*pm.val/p.surface):0;
     const ecH=ec>0?`<span class="dp">+${ec}</span>`:ec<0?`<span class="dn">${ec}</span>`:'—';
     const badge=pct2>=100?'<span class="badge done">Terminé</span>':pct2>0?`<span class="badge prog">${pct2}%</span>`:'<span class="badge todo">À faire</span>';
-    return `<tr><td title="${p.nom}">${p.nom}</td><td>${s}</td><td>${obj}</td><td>${ecH}</td><td>${s>0?rha.toLocaleString():'—'}</td><td>${badge}</td></tr>`;
+    return `<tr><td title="${esc(p.nom)}">${esc(p.nom)}</td><td>${s}</td><td>${obj}</td><td>${ecH}</td><td>${s>0?rha.toLocaleString():'—'}</td><td>${badge}</td></tr>`;
   }).join('');
   const totEc=totS-totO;
   rows+=`<tr class="total-row"><td>Total</td><td>${totS}</td><td>${totO}</td><td>${totEc>0?`<span class="dp">+${totEc}</span>`:totEc<0?`<span class="dn">${totEc}</span>`:'—'}</td><td>${rdtG>0?rdtG.toLocaleString():'—'}</td><td></td></tr>`;
@@ -880,13 +880,13 @@ function buildSaisieSelects(){
   const exploits=Object.keys(camp().exploitations);
   // Saisie : pré-sélectionner l'exploitation active du tableau
   const selS=document.getElementById('s-exploit');
-  selS.innerHTML=exploits.map(e=>`<option value="${e}">${camp().exploitations[e].nom}</option>`).join('');
+  selS.innerHTML=exploits.map(e=>`<option value="${e}">${esc(camp().exploitations[e].nom)}</option>`).join('');
   selS.value=S.exploit; S.saisieExploit=S.exploit;
   updateSaisieParc();
 
   // Pressoir : pré-sélectionner l'exploitation active du tableau
   const selP=document.getElementById('p-exploit');
-  selP.innerHTML=exploits.map(e=>`<option value="${e}">${camp().exploitations[e].nom}</option>`).join('');
+  selP.innerHTML=exploits.map(e=>`<option value="${e}">${esc(camp().exploitations[e].nom)}</option>`).join('');
   selP.value=S.exploit; S.pressExploit=S.exploit;
   updatePressoirs();
 
@@ -914,12 +914,12 @@ window.onPressExploitChange=function(){
 }
 window.updateSaisieParc=function(){
   const e=document.getElementById('s-exploit').value;
-  document.getElementById('s-parcelle').innerHTML=camp().exploitations[e].parcelles.map(p=>`<option>${p.nom}</option>`).join('');
+  document.getElementById('s-parcelle').innerHTML=camp().exploitations[e].parcelles.map(p=>`<option>${esc(p.nom)}</option>`).join('');
 }
 window.updatePressoirs=function(){
   const e=S.pressExploit||document.getElementById('p-exploit')?.value||Object.keys(camp().exploitations)[0];
   if(camp().exploitations[e])
-    document.getElementById('p-pressoir').innerHTML=camp().exploitations[e].pressoirs.map(p=>`<option value="${p.id}">${p.nom}</option>`).join('');
+    document.getElementById('p-pressoir').innerHTML=camp().exploitations[e].pressoirs.map(p=>`<option value="${p.id}">${esc(p.nom)}</option>`).join('');
 }
 
 function renderHistRem(){
@@ -1152,14 +1152,17 @@ async function renderMeteoHisto(annee,exploit,datesVend){
   const fin=new Date(finISO+'T00:00:00');
   while(cur<=fin){ jours.push(toLocalISODate(cur)); cur.setDate(cur.getDate()+1); }
 
-  const lignes=[];
-  for(const j of jours){
+  // Lectures en parallele (Promise.all) plutot qu'en sequence : l'ordre d'affichage est preserve
+  // car Promise.all conserve l'ordre du tableau d'entree, quel que soit l'ordre de resolution.
+  const resultats=await Promise.all(jours.map(async j=>{
     const ref=doc(db,'campagnes',String(annee),'meteo',`${exploit}_${j}`);
     try{
       const snap=await getDoc(ref);
-      if(snap.exists()){ const l=fmtMeteoLigne(j,snap.data()); if(l) lignes.push(l); }
+      if(snap.exists()) return fmtMeteoLigne(j,snap.data());
     }catch(e){ /* pas de relevé pour ce jour, on ignore */ }
-  }
+    return null;
+  }));
+  const lignes=resultats.filter(Boolean);
   if(!lignes.length){
     box.innerHTML=`<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;font-family:'DM Mono',monospace;margin-bottom:4px">📡 Relevé météo auto</div>
       <div style="font-size:12px;color:var(--text3)">Aucun relevé encore récupéré — il se complète automatiquement à chaque remorque saisie (nécessite des coordonnées GPS sur au moins une parcelle).</div>`;
@@ -1235,7 +1238,7 @@ async function renderHistoContent(a){
   document.getElementById('histo-chart').innerHTML=d.parcelles.map(p=>{
     const s=rems.filter(r=>r.exploit===e&&matchParc(r,p)).reduce((a,r)=>a+r.caisses,0);
     const rdtP=s>0?Math.round(s*pm/p.surface):0;
-    return `<div class="bar-row"><span class="bar-label" title="${p.nom}">${p.nom}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.round(rdtP/maxRdt*100)}%"></div></div><span class="bar-val">${rdtP>0?rdtP.toLocaleString():'—'} kg/ha</span></div>`;
+    return `<div class="bar-row"><span class="bar-label" title="${esc(p.nom)}">${esc(p.nom)}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.round(rdtP/maxRdt*100)}%"></div></div><span class="bar-val">${rdtP>0?rdtP.toLocaleString():'—'} kg/ha</span></div>`;
   }).join('');
 }
 function renderExport(){
@@ -1295,7 +1298,7 @@ function renderConfig(){
   document.getElementById('cfg-exploits').innerHTML=Object.entries(camp().exploitations).map(([e,d])=>`
     <div style="padding:10px 0;border-bottom:1px solid var(--border)">
       <div style="margin-bottom:8px">
-        <div style="font-size:14px;font-weight:600;color:var(--text)">${d.nom}</div>
+        <div style="font-size:14px;font-weight:600;color:var(--text)">${esc(d.nom)}</div>
         <div style="font-size:11px;color:var(--text2);font-family:'DM Mono',monospace">${d.parcelles.length} parcelles · ${d.parcelles.reduce((a,p)=>a+p.surface,0).toFixed(2)} ha · rdt ${d.rendement||camp().rendement} kg/ha · ${d.poidsPrev||camp().poidsPrev} kg/caisse</div>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -1345,7 +1348,7 @@ window.demanderNouvelleCampagne=function(){
   if(S.campagnes[prochaine]?.exploitations?.[e]){showToast('Campagne '+prochaine+' déjà créée pour '+expl().nom);return;}
   showModal(
     'Créer la campagne '+prochaine+' — '+expl().nom,
-    `La campagne ${prochaine} sera créée pour ${expl().nom} uniquement, en copiant ses parcelles, pressoirs et paramètres depuis ${S.annee}. La campagne ${S.annee} de ${expl().nom} passera au statut "Terminée" (ses données restent intactes). L'autre exploitation n'est pas affectée. Confirmer ?`,
+    `La campagne ${prochaine} sera créée pour ${esc(expl().nom)} uniquement, en copiant ses parcelles, pressoirs et paramètres depuis ${S.annee}. La campagne ${S.annee} de ${esc(expl().nom)} passera au statut "Terminée" (ses données restent intactes). L'autre exploitation n'est pas affectée. Confirmer ?`,
     'Créer','btn-success',()=>nouvelleCampagne(prochaine)
   );
 }
@@ -1380,7 +1383,7 @@ window.confirmSupprimerCampagne=function(a){
   const e=S.exploit;
   const autresExploitsPresents=Object.keys(S.campagnes[a]?.exploitations||{}).filter(x=>x!==e);
   const msg=autresExploitsPresents.length
-    ? `Supprimer la campagne ${a} de ${expl().nom} uniquement ? Les données de ${autresExploitsPresents.map(x=>S.exploitationsGlobales[x]?.nom||x).join(', ')} pour cette même année ne sont pas affectées. Action irréversible pour ${expl().nom}.`
+    ? `Supprimer la campagne ${a} de ${esc(expl().nom)} uniquement ? Les données de ${autresExploitsPresents.map(x=>esc(S.exploitationsGlobales[x]?.nom||x)).join(', ')} pour cette même année ne sont pas affectées. Action irréversible pour ${esc(expl().nom)}.`
     : `Supprimer définitivement la campagne ${a} et toutes ses données ? Action irréversible.`;
   showModal('Supprimer la campagne '+a,msg,'Supprimer','btn-danger',()=>supprimerCampagne(a));
 }
@@ -1508,7 +1511,7 @@ function renderParcList(){
       const obj=Math.round(p.surface*rdtExploit(e)/pm.val);
       const rdt=Math.round(p.surface*rdtExploit(e)/p.surface);
       return `<div class="parc-row">
-        <div class="parc-info"><div class="parc-nom">${p.nom}</div>
+        <div class="parc-info"><div class="parc-nom">${esc(p.nom)}</div>
         <div class="parc-detail">${p.surface.toFixed(2)} ha · obj. ${obj} caisses · ${fmtKg(obj*pm.val)}</div></div>
         <button class="icon-btn" onclick="editParc(${i})"><i class="ti ti-edit" style="font-size:15px"></i></button>
         <button class="icon-btn danger" onclick="confirmDeleteParc(${i})"><i class="ti ti-trash" style="font-size:15px"></i></button>
@@ -1544,8 +1547,8 @@ window.confirmDeleteParc=function(i){
   const e=S.subExploit, p=camp().exploitations[e].parcelles[i];
   const nb=Object.values(S.remorques).filter(r=>r.exploit===e&&matchParc(r,p)).length;
   const msg=nb>0
-    ? `Supprimer "${p.nom}" ? ${nb} remorque(s) déjà enregistrée(s) cette campagne ne seront plus comptées dans les totaux affichés (l'historique reste conservé dans la base, mais invisible tant qu'aucune parcelle ne reprend cet ID).`
-    : `Supprimer "${p.nom}" ? Les remorques déjà enregistrées sont conservées.`;
+    ? `Supprimer "${esc(p.nom)}" ? ${nb} remorque(s) déjà enregistrée(s) cette campagne ne seront plus comptées dans les totaux affichés (l'historique reste conservé dans la base, mais invisible tant qu'aucune parcelle ne reprend cet ID).`
+    : `Supprimer "${esc(p.nom)}" ? Les remorques déjà enregistrées sont conservées.`;
   showModal('Supprimer la parcelle',msg,'Supprimer','btn-danger',()=>deleteParc(i));
 }
 async function deleteParc(i){
@@ -1603,10 +1606,10 @@ function renderExploitList(){
     :exploits.map(([e,d])=>`
       <div class="parc-row">
         <div class="parc-info">
-          <div class="parc-nom">${d.nom}</div>
+          <div class="parc-nom">${esc(d.nom)}</div>
           <div class="parc-detail">${d.parcelles.length} parcelles · ${d.parcelles.reduce((a,p)=>a+p.surface,0).toFixed(2)} ha · ${d.rendement||camp().rendement} kg/ha</div>
         </div>
-        <button class="icon-btn danger" onclick="confirmDeleteExploitation('${e}')" aria-label="Supprimer ${d.nom}"><i class="ti ti-trash" style="font-size:15px"></i></button>
+        <button class="icon-btn danger" onclick="confirmDeleteExploitation('${e}')" aria-label="Supprimer ${esc(d.nom)}"><i class="ti ti-trash" style="font-size:15px"></i></button>
       </div>`).join('');
   document.getElementById('sub-exploit-sub').textContent=exploits.length+' exploitation(s) — campagne '+S.annee;
 }
@@ -1713,7 +1716,7 @@ function renderPressoirList(){
     ?'<div style="padding:12px;text-align:center;font-size:13px;color:var(--text3)">Aucun pressoir.</div>'
     :d.pressoirs.map((p,i)=>`
       <div class="parc-row">
-        <div class="parc-info"><div class="parc-nom">${p.nom}</div></div>
+        <div class="parc-info"><div class="parc-nom">${esc(p.nom)}</div></div>
         <button class="icon-btn danger" onclick="confirmDeletePressoir(${i})"><i class="ti ti-trash" style="font-size:15px"></i></button>
       </div>`).join('');
 }
@@ -1731,8 +1734,8 @@ window.confirmDeletePressoir=function(i){
   const e=S.subExploit, p=camp().exploitations[e].pressoirs[i];
   const nb=Object.values(S.bons).filter(b=>b.exploit===e&&matchPressoir(b,p)).length;
   const msg=nb>0
-    ? `Supprimer "${p.nom}" ? ${nb} bon(s) déjà enregistré(s) cette campagne ne seront plus comptés dans les totaux affichés (l'historique reste conservé dans la base, mais invisible tant qu'aucun pressoir ne reprend cet ID).`
-    : `Supprimer "${p.nom}" ? Les bons déjà enregistrés sont conservés.`;
+    ? `Supprimer "${esc(p.nom)}" ? ${nb} bon(s) déjà enregistré(s) cette campagne ne seront plus comptés dans les totaux affichés (l'historique reste conservé dans la base, mais invisible tant qu'aucun pressoir ne reprend cet ID).`
+    : `Supprimer "${esc(p.nom)}" ? Les bons déjà enregistrés sont conservés.`;
   showModal('Supprimer le pressoir',msg,'Supprimer','btn-danger',()=>deletePressoir(i,p.nom));
 }
 async function deletePressoir(i,nom){
@@ -1746,7 +1749,7 @@ async function deletePressoir(i,nom){
 window.openQuickSaisie=function(){
   if(!S.campagne) return;
   const exploits=Object.keys(camp().exploitations);
-  document.getElementById('q-exploit').innerHTML=exploits.map(e=>`<option value="${e}">${camp().exploitations[e].nom}</option>`).join('');
+  document.getElementById('q-exploit').innerHTML=exploits.map(e=>`<option value="${e}">${esc(camp().exploitations[e].nom)}</option>`).join('');
   document.getElementById('q-exploit').value=S.exploit;
   updateQuickParc();
   document.getElementById('q-caisses').value='';
@@ -1759,7 +1762,7 @@ window.closeQuickSaisie=function(e){
 }
 window.updateQuickParc=function(){
   const e=document.getElementById('q-exploit').value;
-  document.getElementById('q-parcelle').innerHTML=camp().exploitations[e].parcelles.map(p=>`<option>${p.nom}</option>`).join('');
+  document.getElementById('q-parcelle').innerHTML=camp().exploitations[e].parcelles.map(p=>`<option>${esc(p.nom)}</option>`).join('');
 }
 window.saveQuickRem=async function(){
   const e=document.getElementById('q-exploit').value;
@@ -2073,6 +2076,13 @@ window.exporterToutesDonnees=async function(){
     btn.disabled=false;
     setTimeout(()=>{hint.textContent='';},4000);
   }
+}
+
+// Echappe les caracteres HTML speciaux dans un texte libre (noms de parcelles/exploitations/pressoirs...)
+// avant insertion via innerHTML, pour eviter qu'un "<" tape par erreur ne casse l'affichage.
+function esc(v){
+  if(v===null||v===undefined) return '';
+  return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 window.showToast=function(msg){
