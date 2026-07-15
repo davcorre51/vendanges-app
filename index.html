@@ -453,7 +453,7 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, deleteField, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 const firebaseConfig = {
@@ -634,7 +634,7 @@ async function init() {
   S.subExploit=S.exploit;
   buildEtabs();
   buildAnneeSelect(); buildSaisieSelects(); renderTableau(); renderConfig();
-  subscribeRemorques(); subscribeBons();
+  subscribeRemorques(); subscribeBons(); subscribeCampagne();
 }
 
 async function creerCampagneDefaut(annee){
@@ -669,6 +669,26 @@ function subscribeBons(){
     snap.forEach(d=>{S.bons[d.id]={...d.data(),id:d.id};});
     renderTableau();
     if(document.getElementById('screen-pressoir').classList.contains('active')) renderPressoir();
+  }));
+}
+// Listener temps reel sur le document de config de la campagne (exploitations, parcelles, pressoirs,
+// rendement, commentaires...). Ajoute le 15/07/2026 : avant, ce document n'etait lu qu'une seule fois
+// au chargement, donc une copie locale pouvait devenir perimee si l'appli etait ouverte sur un autre
+// appareil en meme temps ; le prochain enregistrement local risquait d'ecraser les changements distants.
+// Doit etre appele APRES subscribeRemorques() (qui vide S.unsubscribes) pour ne pas etre desabonne aussitot.
+function subscribeCampagne(){
+  S.unsubscribes.push(onSnapshot(doc(db,'campagnes',String(S.annee)),snap=>{
+    if(!snap.exists()) return;
+    S.campagnes[S.annee]=snap.data();
+    S.campagne=S.campagnes[S.annee];
+    const actif=document.querySelector('.screen.active')?.id?.replace('screen-','');
+    ({
+      tableau:renderTableau,
+      saisie:()=>{ updateSaisieParc(); renderHistRem(); },
+      pressoir:()=>{ updatePressoirs(); renderPressoir(); },
+      histo:renderHisto,
+      config:renderConfig
+    })[actif]?.();
   }));
 }
 
@@ -770,7 +790,7 @@ window.changerAnnee=async function(){
   S.campagne=S.campagnes[S.annee];
   S.saisieExploit=S.exploit; S.pressExploit=S.exploit; S.subExploit=S.exploit;
   S.remorques={}; S.bons={};
-  buildSaisieSelects(); subscribeRemorques(); subscribeBons();
+  buildSaisieSelects(); subscribeRemorques(); subscribeBons(); subscribeCampagne();
   buildEtabs();
   const actif=document.querySelector('.screen.active')?.id?.replace('screen-','');
   ({
@@ -1450,7 +1470,10 @@ window.saveExploitParams=async function(){
   const poids=parseFloat(document.getElementById('params-poids').value)||41;
   camp().exploitations[e].rendement=rdt;
   camp().exploitations[e].poidsPrev=poids;
-  await setDoc(doc(db,'campagnes',String(S.annee)),camp());
+  await updateDoc(doc(db,'campagnes',String(S.annee)), {
+    [`exploitations.${e}.rendement`]: rdt,
+    [`exploitations.${e}.poidsPrev`]: poids
+  });
   renderParamsSim(e);
   renderTableau();
 }
@@ -1528,7 +1551,7 @@ window.confirmDeleteParc=function(i){
 async function deleteParc(i){
   const nom=camp().exploitations[S.subExploit].parcelles[i].nom;
   camp().exploitations[S.subExploit].parcelles.splice(i,1);
-  await setDoc(doc(db,'campagnes',String(S.annee)),camp());
+  await updateDoc(doc(db,'campagnes',String(S.annee)), {[`exploitations.${S.subExploit}.parcelles`]: camp().exploitations[S.subExploit].parcelles});
   if(S.editParcIdx===i) resetParcForm();
   renderParcList(); renderParcSummary(); showToast('"'+nom+'" supprimée');
 }
@@ -1551,7 +1574,7 @@ window.saveParc=async function(){
     if(parcs.find(p=>p.nom.toLowerCase()===nom.toLowerCase())){showToast('Ce nom existe déjà');return;}
     parcs.push({nom,surface,obj,lat,lon,id:genId()}); showToast('"'+nom+'" ajoutée');
   }
-  await setDoc(doc(db,'campagnes',String(S.annee)),camp());
+  await updateDoc(doc(db,'campagnes',String(S.annee)), {[`exploitations.${S.subExploit}.parcelles`]: parcs});
   resetParcForm(); renderParcList(); renderParcSummary();
 }
 window.resetParcForm=function(){
@@ -1606,7 +1629,7 @@ window.saveExploitation=async function(){
     nom, rendement:rdt, poidsPrev:poids,
     pressoirs:[], parcelles:[], commentaires:{}
   };
-  await setDoc(doc(db,'campagnes',String(S.annee)),camp());
+  await updateDoc(doc(db,'campagnes',String(S.annee)), {[`exploitations.${key}`]: camp().exploitations[key]});
   document.getElementById('exploit-nom').value='';
   renderExploitList(); renderConfig(); buildSaisieSelects();
   showToast('"'+nom+'" ajoutée — ajoutez maintenant ses parcelles et pressoirs');
@@ -1625,7 +1648,7 @@ window.confirmDeleteExploitation=function(e){
 async function deleteExploitation(e){
   const nom=camp().exploitations[e].nom;
   delete camp().exploitations[e];
-  await setDoc(doc(db,'campagnes',String(S.annee)),camp());
+  await updateDoc(doc(db,'campagnes',String(S.annee)), {[`exploitations.${e}`]: deleteField()});
   // Si c'était l'exploit active, basculer sur la première disponible
   if(S.exploit===e){
     const remaining=Object.keys(camp().exploitations);
@@ -1660,11 +1683,17 @@ window.saveComment=function(){
   saveCommentTimer=setTimeout(async()=>{
     const e=S.subExploit;
     if(!camp().exploitations[e].commentaires) camp().exploitations[e].commentaires={};
-    camp().exploitations[e].commentaires.meteo=document.getElementById('comment-meteo').value;
-    camp().exploitations[e].commentaires.qualite=document.getElementById('comment-qualite').value;
-    camp().exploitations[e].commentaires.incidents=document.getElementById('comment-incidents').value;
-    camp().exploitations[e].commentaires.observations=document.getElementById('comment-observations').value;
-    await setDoc(doc(db,'campagnes',String(S.annee)),camp());
+    const meteo=document.getElementById('comment-meteo').value;
+    const qualite=document.getElementById('comment-qualite').value;
+    const incidents=document.getElementById('comment-incidents').value;
+    const observations=document.getElementById('comment-observations').value;
+    Object.assign(camp().exploitations[e].commentaires, {meteo,qualite,incidents,observations});
+    await updateDoc(doc(db,'campagnes',String(S.annee)), {
+      [`exploitations.${e}.commentaires.meteo`]: meteo,
+      [`exploitations.${e}.commentaires.qualite`]: qualite,
+      [`exploitations.${e}.commentaires.incidents`]: incidents,
+      [`exploitations.${e}.commentaires.observations`]: observations
+    });
     document.getElementById('comment-save-hint').textContent='✓ Enregistré';
     setTimeout(()=>document.getElementById('comment-save-hint').textContent='',2000);
   },800);
@@ -1694,7 +1723,7 @@ window.savePressoir=async function(){
   const pressoirs=camp().exploitations[S.subExploit].pressoirs;
   if(pressoirs.find(p=>p.nom.toUpperCase()===nom)){showToast('Ce pressoir existe déjà');return;}
   pressoirs.push({nom,id:genId()});
-  await setDoc(doc(db,'campagnes',String(S.annee)),camp());
+  await updateDoc(doc(db,'campagnes',String(S.annee)), {[`exploitations.${S.subExploit}.pressoirs`]: pressoirs});
   document.getElementById('pressoir-nom').value='';
   renderPressoirList(); showToast('"'+nom+'" ajouté');
 }
@@ -1708,7 +1737,7 @@ window.confirmDeletePressoir=function(i){
 }
 async function deletePressoir(i,nom){
   camp().exploitations[S.subExploit].pressoirs.splice(i,1);
-  await setDoc(doc(db,'campagnes',String(S.annee)),camp());
+  await updateDoc(doc(db,'campagnes',String(S.annee)), {[`exploitations.${S.subExploit}.pressoirs`]: camp().exploitations[S.subExploit].pressoirs});
   renderPressoirList(); showToast('"'+nom+'" supprimé');
 }
 
