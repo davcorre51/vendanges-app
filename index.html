@@ -14,6 +14,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{
   --bg:#f5f3ee;--bg2:#ece9e2;--bg3:#e3dfd6;
@@ -513,6 +514,7 @@ let S = {
   modalCallback: null,
   saisieExploit: null,  // exploitation active dans saisie
   pressExploit: null,   // exploitation active dans pressoir
+  lastParcelle: {},     // dernière parcelle saisie par exploitation, ex: {CV:'Les Machets'}
   exploitationsGlobales: {}, // registre global des exploitations, indépendant des années
   modifExploitEn: null,
 };
@@ -925,7 +927,11 @@ window.onPressExploitChange=function(){
 }
 window.updateSaisieParc=function(){
   const e=document.getElementById('s-exploit').value;
-  document.getElementById('s-parcelle').innerHTML=camp().exploitations[e].parcelles.map(p=>`<option>${esc(p.nom)}</option>`).join('');
+  const sel=document.getElementById('s-parcelle');
+  sel.innerHTML=camp().exploitations[e].parcelles.map(p=>`<option>${esc(p.nom)}</option>`).join('');
+  // Restaure la dernière parcelle saisie pour cette exploitation, si elle existe toujours
+  const derniere=S.lastParcelle[e];
+  if(derniere && [...sel.options].some(o=>o.value===derniere)) sel.value=derniere;
 }
 window.updatePressoirs=function(){
   const e=S.pressExploit||document.getElementById('p-exploit')?.value||Object.keys(camp().exploitations)[0];
@@ -982,6 +988,7 @@ window.saveRem=async function(){
     const obj={exploit:e,parcelle:parc,parcelleId:pObj?.id||null,caisses,dt};
     if(S.editRemId){await updateDoc(doc(db,'campagnes',String(S.annee),'remorques',S.editRemId),obj);showToast('Remorque modifiée');}
     else{await addDoc(collection(db,'campagnes',String(S.annee),'remorques'),obj);showToast('✓ '+caisses+' caisses — '+parc);}
+    S.lastParcelle[e]=parc; // mémorise pour pré-sélectionner à la prochaine saisie
     triggerMeteoJour(S.annee,e,dt);
     cancelRem();
   } finally {
@@ -1268,12 +1275,8 @@ async function renderHistoContent(a){
 }
 function renderExport(){
   document.getElementById('export-section').innerHTML=`
-    <p style="font-size:12px;color:var(--text2);margin-bottom:10px">Données de la campagne ${S.annee} — importables dans Excel.</p>
-    <div class="export-row">
-      <button class="export-btn" onclick="exportRemorques()"><i class="ti ti-table-export" style="font-size:15px"></i> Remorques</button>
-      <button class="export-btn" onclick="exportBons()"><i class="ti ti-table-export" style="font-size:15px"></i> Bons pressoir</button>
-    </div>
-    <div class="export-row"><button class="export-btn" onclick="exportRecap()"><i class="ti ti-table-export" style="font-size:15px"></i> Récapitulatif parcelles</button></div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:10px">Données de ${S.exploit?expl(S.exploit).nom:'l\'exploitation affichée'} pour la campagne ${S.annee} — un seul fichier Excel avec 3 onglets (Remorques, Bons pressoir, Récapitulatif parcelles).</p>
+    <div class="export-row"><button class="export-btn" onclick="exportComplet()"><i class="ti ti-table-export" style="font-size:15px"></i> Export Excel complet</button></div>
     <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
       <p style="font-size:12px;color:var(--text2);margin-bottom:8px">Rapport PDF de fin de campagne.</p>
       <div class="export-row">
@@ -1303,6 +1306,36 @@ window.exportRecap=function(){
     csv+=`${p.nom};${p.surface};${obj};${s};${ec};${Math.round(rdtExploit(e))};${s>0?Math.round(s*pm.val/p.surface):0}\n`;
   });
   dlCSV(csv,`recap_${e}_${S.annee}.csv`);
+}
+window.exportComplet=function(){
+  if(!window.XLSX){ showToast('Bibliothèque Excel non chargée'); return; }
+  const e=S.exploit, d=expl(e), pm=poidsReel(e);
+
+  // ── Onglet Remorques (exploitation affichée) ──
+  const shRem=[['Parcelle','Caisses','Date','Heure']];
+  Object.values(S.remorques).filter(r=>r.exploit===e).sort((a,b)=>a.dt.localeCompare(b.dt)).forEach(r=>{
+    shRem.push([r.parcelle, r.caisses, fmtDate(r.dt), fmtHeure(r.dt)]);
+  });
+
+  // ── Onglet Bons pressoir (exploitation affichée) ──
+  const shBons=[['Date','Pressoir','N° Bon','Caisses','Poids (kg)','kg/caisse']];
+  Object.values(S.bons).filter(b=>b.exploit===e).sort((a,b)=>a.date.localeCompare(b.date)).forEach(b=>{
+    shBons.push([fmtDate(b.date), b.pressoir, b.bon||'', b.caisses, b.poids, b.caisses>0?+(b.poids/b.caisses).toFixed(2):'']);
+  });
+
+  // ── Onglet Récap parcelles (exploitation affichée) ──
+  const shRecap=[['Parcelle','Surface (ha)','Objectif','Sorties','Écart','Rdt obj. (kg/ha)','Rdt réel (kg/ha)']];
+  d.parcelles.forEach(p=>{
+    const s=totSorties(e,p), obj=objDynamique(e,p), ec=s-obj;
+    shRecap.push([p.nom, p.surface, obj, s, ec, Math.round(rdtExploit(e)), s>0?Math.round(s*pm.val/p.surface):0]);
+  });
+
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(shRem), 'Remorques');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(shBons), 'Bons pressoir');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(shRecap), 'Récap parcelles');
+  XLSX.writeFile(wb, `Vendanges_${S.annee}_${d.nom.replace(/\s+/g,'_')}.xlsx`);
+  showToast('✓ Export Excel téléchargé');
 }
 function dlCSV(csv,filename){
   const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'})),download:filename});
@@ -1962,6 +1995,31 @@ window.genererPDF=async function(exploitKey){
     didParseCell:(d)=>{ if(d.row.index===rowsParc.length-1){d.cell.styles.fontStyle='bold';d.cell.styles.fillColor=[234,243,232];} }
   });
   y=pdf.lastAutoTable.finalY+6;
+
+  // ── Tableau bilan par pressoir ────────────────────────────
+  const pressoirsListe=d.pressoirs||[];
+  const rowsPress=pressoirsListe.map(p=>{
+    const bonsP=bons.filter(b=>matchPressoir(b,p));
+    const c=bonsP.reduce((a,b)=>a+b.caisses,0);
+    const poids=bonsP.reduce((a,b)=>a+b.poids,0);
+    return {nom:p.nom, nb:bonsP.length, c, poids, moy:c>0?(poids/c):0};
+  }).filter(r=>r.nb>0);
+  if(rowsPress.length>0){
+    pdf.setTextColor(...green); pdf.setFontSize(10); pdf.setFont('helvetica','bold');
+    pdf.text('Synthèse par pressoir', mL, y); y+=4;
+    const bodyPress=rowsPress.map(r=>[r.nom, String(r.nb), String(r.c), fmtN(r.poids), r.moy>0?r.moy.toFixed(2):'—']);
+    bodyPress.push(['TOTAL', String(rowsPress.reduce((a,r)=>a+r.nb,0)), String(totC), fmtN(totP), totC>0?(totP/totC).toFixed(2):'—']);
+    pdf.autoTable({
+      startY:y, margin:{left:mL,right:mR},
+      head:[['Pressoir','Bons','Caisses','Poids (kg)','kg/caisse']],
+      body:bodyPress,
+      styles:{fontSize:9,cellPadding:2.5},
+      headStyles:{fillColor:green,textColor:[255,255,255],fontStyle:'bold',fontSize:8,halign:'center'},
+      columnStyles:{0:{cellWidth:50},1:{halign:'center'},2:{halign:'center'},3:{halign:'center'},4:{halign:'center'}},
+      didParseCell:(d)=>{ if(d.row.index===bodyPress.length-1){d.cell.styles.fontStyle='bold';d.cell.styles.fillColor=[234,243,232];} }
+    });
+    y=pdf.lastAutoTable.finalY+6;
+  }
 
   // ── Commentaires ─────────────────────────────────────────
   const etiq=[['meteo','Météo'],['qualite','Qualité'],['incidents','Incidents'],['observations','Observations']];
