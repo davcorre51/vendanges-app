@@ -84,6 +84,7 @@ select,input[type=number],input[type=text],input[type=date],input[type=datetime-
 select:focus,input:focus{outline:none;border-color:var(--accent)}
 .hint{font-size:11px;color:var(--accent);margin-top:3px;font-family:'DM Mono',monospace}
 .btn{width:100%;padding:11px;border:none;border-radius:var(--radius-sm);font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;margin-top:4px;transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:6px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
 .btn:active{transform:scale(0.98)}
 .btn-primary{background:var(--accent);color:#fff}
 .btn-secondary{background:var(--bg2);color:var(--text);border:1px solid var(--border2);margin-top:6px}
@@ -1314,7 +1315,19 @@ function renderConfig(){
   const anns=anneesDispoPourExploit(S.exploit);
   const prochaine=Math.max(...anns)+1;
   document.getElementById('btn-new-camp').innerHTML=`<i class="ti ti-plus"></i> Créer la campagne ${prochaine}`;
-  document.getElementById('btn-del-camp').innerHTML=`<i class="ti ti-trash"></i> Supprimer la campagne ${S.annee}`;
+  // Suppression limitee aux campagnes de plus de 5 ans (bouton facilement accessible auparavant,
+  // sans distinction entre une tres vieille campagne et la campagne en cours de vendange).
+  const btnDel=document.getElementById('btn-del-camp');
+  const ageCampagne=new Date().getFullYear()-S.annee;
+  if(ageCampagne>5){
+    btnDel.disabled=false;
+    btnDel.title='';
+    btnDel.innerHTML=`<i class="ti ti-trash"></i> Supprimer la campagne ${S.annee}`;
+  } else {
+    btnDel.disabled=true;
+    btnDel.title=`Seules les campagnes de plus de 5 ans peuvent être supprimées depuis cette page (campagne ${S.annee} : ${ageCampagne} an(s)).`;
+    btnDel.innerHTML=`<i class="ti ti-lock"></i> Suppression indisponible (< 5 ans)`;
+  }
   document.getElementById('cfg-annee-lbl').textContent=S.annee;
   renderSimulation();
 
@@ -1404,6 +1417,7 @@ async function nouvelleCampagne(prochaine){
   showToast('✓ Campagne '+prochaine+' créée pour '+expl().nom+' !');
 }
 window.confirmSupprimerCampagne=function(a){
+  if(new Date().getFullYear()-a<=5){ showToast('Suppression réservée aux campagnes de plus de 5 ans'); return; }
   const e=S.exploit;
   const autresExploitsPresents=Object.keys(S.campagnes[a]?.exploitations||{}).filter(x=>x!==e);
   const msg=autresExploitsPresents.length
