@@ -444,7 +444,7 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
     <div class="form-group"><label class="form-label">Exploitation</label><select id="q-exploit" onchange="updateQuickParc()"></select></div>
     <div class="form-group"><label class="form-label">Parcelle</label><select id="q-parcelle"></select></div>
     <div class="form-group"><label class="form-label">Nombre de caisses</label><input type="number" id="q-caisses" placeholder="ex : 32" min="1" inputmode="numeric"></div>
-    <button class="btn btn-primary" onclick="saveQuickRem()"><i class="ti ti-check"></i> Enregistrer</button>
+    <button class="btn btn-primary" id="btn-quick-save" onclick="saveQuickRem()"><i class="ti ti-check"></i> Enregistrer</button>
   </div>
 </div>
 
@@ -973,12 +973,19 @@ window.saveRem=async function(){
   const caisses=parseInt(document.getElementById('s-caisses').value),dt=document.getElementById('s-dt').value;
   if(!caisses||caisses<=0){showToast('Nombre de caisses invalide');return;}
   if(!dt){showToast('Date et heure requises');return;}
-  const pObj=camp().exploitations[e]?.parcelles.find(pp=>pp.nom===parc);
-  const obj={exploit:e,parcelle:parc,parcelleId:pObj?.id||null,caisses,dt};
-  if(S.editRemId){await updateDoc(doc(db,'campagnes',String(S.annee),'remorques',S.editRemId),obj);showToast('Remorque modifiée');}
-  else{await addDoc(collection(db,'campagnes',String(S.annee),'remorques'),obj);showToast('✓ '+caisses+' caisses — '+parc);}
-  triggerMeteoJour(S.annee,e,dt);
-  cancelRem();
+  const btn=document.getElementById('btn-rem-save');
+  if(btn.disabled) return; // protection anti double-tap : un envoi est deja en cours
+  btn.disabled=true;
+  try{
+    const pObj=camp().exploitations[e]?.parcelles.find(pp=>pp.nom===parc);
+    const obj={exploit:e,parcelle:parc,parcelleId:pObj?.id||null,caisses,dt};
+    if(S.editRemId){await updateDoc(doc(db,'campagnes',String(S.annee),'remorques',S.editRemId),obj);showToast('Remorque modifiée');}
+    else{await addDoc(collection(db,'campagnes',String(S.annee),'remorques'),obj);showToast('✓ '+caisses+' caisses — '+parc);}
+    triggerMeteoJour(S.annee,e,dt);
+    cancelRem();
+  } finally {
+    btn.disabled=false;
+  }
 }
 window.cancelRem=function(){
   S.editRemId=null;
@@ -1056,10 +1063,17 @@ window.saveBon=async function(){
   const bon=document.getElementById('p-bon').value;
   const caisses=parseInt(document.getElementById('p-caisses').value),poids=parseFloat(document.getElementById('p-poids').value);
   if(!date||!caisses||!poids){showToast('Remplis tous les champs obligatoires');return;}
-  const obj={exploit:e,date,pressoir,pressoirId,bon,caisses,poids};
-  if(S.editBonId){await updateDoc(doc(db,'campagnes',String(S.annee),'bons',S.editBonId),obj);showToast('Bon modifié · '+(poids/caisses).toFixed(1)+' kg/caisse');}
-  else{await addDoc(collection(db,'campagnes',String(S.annee),'bons'),obj);showToast('Bon enregistré · '+(poids/caisses).toFixed(1)+' kg/caisse');}
-  cancelBon();
+  const btn=document.getElementById('btn-bon-save');
+  if(btn.disabled) return; // protection anti double-tap : un envoi est deja en cours
+  btn.disabled=true;
+  try{
+    const obj={exploit:e,date,pressoir,pressoirId,bon,caisses,poids};
+    if(S.editBonId){await updateDoc(doc(db,'campagnes',String(S.annee),'bons',S.editBonId),obj);showToast('Bon modifié · '+(poids/caisses).toFixed(1)+' kg/caisse');}
+    else{await addDoc(collection(db,'campagnes',String(S.annee),'bons'),obj);showToast('Bon enregistré · '+(poids/caisses).toFixed(1)+' kg/caisse');}
+    cancelBon();
+  } finally {
+    btn.disabled=false;
+  }
 }
 window.cancelBon=function(){
   S.editBonId=null;
@@ -1779,12 +1793,19 @@ window.saveQuickRem=async function(){
   const parc=document.getElementById('q-parcelle').value;
   const caisses=parseInt(document.getElementById('q-caisses').value);
   if(!caisses||caisses<=0){showToast('Nombre de caisses invalide');return;}
-  const dt=nowDT();
-  const pObj=camp().exploitations[e]?.parcelles.find(pp=>pp.nom===parc);
-  await addDoc(collection(db,'campagnes',String(S.annee),'remorques'),{exploit:e,parcelle:parc,parcelleId:pObj?.id||null,caisses,dt});
-  triggerMeteoJour(S.annee,e,dt);
-  document.getElementById('quick-modal').classList.remove('active');
-  showToast('✓ '+caisses+' caisses — '+parc);
+  const btn=document.getElementById('btn-quick-save');
+  if(btn.disabled) return; // protection anti double-tap : un envoi est deja en cours
+  btn.disabled=true;
+  try{
+    const dt=nowDT();
+    const pObj=camp().exploitations[e]?.parcelles.find(pp=>pp.nom===parc);
+    await addDoc(collection(db,'campagnes',String(S.annee),'remorques'),{exploit:e,parcelle:parc,parcelleId:pObj?.id||null,caisses,dt});
+    triggerMeteoJour(S.annee,e,dt);
+    document.getElementById('quick-modal').classList.remove('active');
+    showToast('✓ '+caisses+' caisses — '+parc);
+  } finally {
+    btn.disabled=false;
+  }
 }
 
 // ── FAB — masquer sur onglets Saisie/Pressoir ────────────────
