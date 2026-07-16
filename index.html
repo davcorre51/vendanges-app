@@ -453,7 +453,7 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, deleteField, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, deleteField, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 const firebaseConfig = {
@@ -466,7 +466,17 @@ const firebaseConfig = {
 };
 
 const fbApp = initializeApp(firebaseConfig);
-const db = getFirestore(fbApp);
+// Cache local persistant (IndexedDB) : permet de continuer a saisir sans reseau (frequent en vignoble/cuverie),
+// les ecritures sont mises en attente localement puis synchronisees automatiquement au retour de la connexion.
+// Le bandeau "hors ligne" existant annoncait deja ce comportement — il n'etait jusqu'ici que visuel.
+// Repli sur getFirestore() classique si le cache persistant echoue (ex: navigation privee, navigateur non supporte).
+let db;
+try {
+  db = initializeFirestore(fbApp, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
+} catch (e) {
+  console.error('Cache local persistant indisponible, mode en ligne uniquement:', e);
+  db = getFirestore(fbApp);
+}
 const auth = getAuth(fbApp);
 
 // Authentification anonyme — invisible pour l'utilisateur, requise par les règles Firestore
