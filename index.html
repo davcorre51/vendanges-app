@@ -1380,7 +1380,8 @@ window.toggleAccord=function(id){
 
 window.renderSimulation=function(){
   const e=S.exploit;
-  const d=camp().exploitations[e];
+  const d=camp()?.exploitations?.[e];
+  if(!d){ document.getElementById('cfg-sim').innerHTML=''; return; }
   const pm=poidsReel(e);
   const rdt=d.rendement||camp().rendement;
   const surf=d.parcelles.reduce((a,p)=>a+p.surface,0);
@@ -1436,7 +1437,7 @@ async function nouvelleCampagne(prochaine){
   S.annee=prochaine; S.campagne=cible;
   S.saisieExploit=e; S.pressExploit=e; S.subExploit=e;
   S.remorques={}; S.bons={};
-  buildAnneeSelect(); subscribeRemorques(); subscribeBons(); buildSaisieSelects();
+  buildAnneeSelect(); subscribeRemorques(); subscribeBons(); subscribeCampagne(); buildSaisieSelects();
   renderConfig(); renderTableau();
   showToast('✓ Campagne '+prochaine+' créée pour '+expl().nom+' !');
 }
@@ -1516,7 +1517,7 @@ async function supprimerCampagne(a){
     S.annee=anneeDefaut; S.campagne=S.campagnes[anneeDefaut];
   }
   S.remorques={}; S.bons={};
-  buildAnneeSelect(); subscribeRemorques(); subscribeBons(); buildSaisieSelects();
+  buildAnneeSelect(); subscribeRemorques(); subscribeBons(); subscribeCampagne(); buildSaisieSelects();
   renderConfig(); renderTableau();
   showToast('Campagne '+a+' supprimée pour '+expl().nom);
  }catch(err){
