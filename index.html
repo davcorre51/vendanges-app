@@ -1350,18 +1350,7 @@ function renderConfig(){
   document.getElementById('btn-new-camp').innerHTML=`<i class="ti ti-plus"></i> Créer la campagne ${prochaine}`;
   // Suppression limitee aux campagnes de plus de 5 ans (bouton facilement accessible auparavant,
   // sans distinction entre une tres vieille campagne et la campagne en cours de vendange).
-  const btnDel=document.getElementById('btn-del-camp');
-  const ageCampagne=new Date().getFullYear()-S.annee;
-  const campagneVide=!Object.values(S.remorques).some(r=>r.exploit===S.exploit) && !Object.values(S.bons).some(b=>b.exploit===S.exploit);
-  if(ageCampagne>5 || campagneVide){
-    btnDel.disabled=false;
-    btnDel.title='';
-    btnDel.innerHTML=`<i class="ti ti-trash"></i> Supprimer la campagne ${S.annee}`;
-  } else {
-    btnDel.disabled=true;
-    btnDel.title=`Seules les campagnes de plus de 5 ans (ou entièrement vides) peuvent être supprimées depuis cette page (campagne ${S.annee} : ${ageCampagne} an(s)).`;
-    btnDel.innerHTML=`<i class="ti ti-lock"></i> Suppression indisponible (< 5 ans)`;
-  }
+  document.getElementById('btn-del-camp').innerHTML=`<i class="ti ti-trash"></i> Supprimer la campagne ${S.annee}`;
   document.getElementById('cfg-annee-lbl').textContent=S.annee;
   renderSimulation();
 
@@ -1453,17 +1442,33 @@ async function nouvelleCampagne(prochaine){
 }
 window.confirmSupprimerCampagne=async function(a){
   const e=S.exploit;
-  if(new Date().getFullYear()-a<=5){
-    // Exception : une campagne vide (jamais démarrée, créée par erreur) reste supprimable même récente
-    const [rs,bs]=await Promise.all([getDocs(collection(db,'campagnes',String(a),'remorques')),getDocs(collection(db,'campagnes',String(a),'bons'))]);
-    const aDesDonnees=rs.docs.some(d=>d.data().exploit===e)||bs.docs.some(d=>d.data().exploit===e);
-    if(aDesDonnees){ showToast('Suppression réservée aux campagnes de plus de 5 ans (ou entièrement vides)'); return; }
-  }
+  const [rs,bs]=await Promise.all([getDocs(collection(db,'campagnes',String(a),'remorques')),getDocs(collection(db,'campagnes',String(a),'bons'))]);
+  const nbRem=rs.docs.filter(d=>d.data().exploit===e).length;
+  const nbBons=bs.docs.filter(d=>d.data().exploit===e).length;
+  const nbParcelles=(S.campagnes[a]?.exploitations?.[e]?.parcelles||[]).length;
   const autresExploitsPresents=Object.keys(S.campagnes[a]?.exploitations||{}).filter(x=>x!==e);
-  const msg=autresExploitsPresents.length
-    ? `Supprimer la campagne ${a} de ${esc(expl().nom)} uniquement ? Les données de ${autresExploitsPresents.map(x=>esc(S.exploitationsGlobales[x]?.nom||x)).join(', ')} pour cette même année ne sont pas affectées. Action irréversible pour ${esc(expl().nom)}.`
-    : `Supprimer définitivement la campagne ${a} et toutes ses données ? Action irréversible.`;
-  showModal('Supprimer la campagne '+a,msg,'Supprimer','btn-danger',()=>supprimerCampagne(a));
+
+  const etatDesLieux=nbRem||nbBons
+    ? `Cette campagne contient ${nbRem} remorque(s) et ${nbBons} bon(s) de pesée pour ${esc(expl().nom)}, en plus de ses ${nbParcelles} parcelle(s) et pressoir(s) configurés.`
+    : `Cette campagne est vide (aucune remorque ni bon enregistré) mais contient sa configuration : ${nbParcelles} parcelle(s) et pressoir(s).`;
+  const msgPortee=autresExploitsPresents.length
+    ? `Seules les données de ${esc(expl().nom)} seront supprimées ; ${autresExploitsPresents.map(x=>esc(S.exploitationsGlobales[x]?.nom||x)).join(', ')} ne sont pas affectées.`
+    : `Aucune autre exploitation n'utilise ce document d'année : il sera supprimé entièrement.`;
+
+  showModal(
+    'Supprimer la campagne '+a+' ?',
+    `${etatDesLieux} ${msgPortee}`,
+    'Continuer','btn-danger',
+    ()=>confirmSupprimerCampagneEtape2(a,nbRem,nbBons)
+  );
+}
+function confirmSupprimerCampagneEtape2(a,nbRem,nbBons){
+  showModal(
+    'Confirmation finale',
+    `Dernière étape : cette suppression est définitive et ne pourra pas être annulée. ${nbRem||nbBons?`Les ${nbRem} remorque(s) et ${nbBons} bon(s) seront perdus. `:''}Confirmer la suppression de la campagne ${a} ?`,
+    'Supprimer définitivement','btn-danger',
+    ()=>supprimerCampagne(a)
+  );
 }
 async function supprimerCampagne(a){
   const e=S.exploit;
