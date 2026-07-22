@@ -854,6 +854,7 @@ function renderTableau(){
   const totS=d.parcelles.reduce((a,p)=>a+totSorties(e,p),0);
   const totO=d.parcelles.reduce((a,p)=>a+objDynamique(e,p),0);
   const totKgObj=Math.round(totO*pm.val);
+  console.log('[DIAG renderTableau]','exploit=',e,'annee=',S.annee,'nbParcelles=',d.parcelles.length,'surfaceTotale=',d.parcelles.reduce((a,p)=>a+p.surface,0),'totO(caisses)=',totO,'totKgObj=',totKgObj);
   const totKgRecolte=Math.round(totS*pm.val);
   const restant=Math.max(0,totO-totS);
   const pct=totO>0?Math.round(totS/totO*100):0;
@@ -1673,6 +1674,7 @@ window.saveParc=async function(){
     parcs.push({nom,surface,obj,lat,lon,id:genId()}); showToast('"'+nom+'" ajoutée');
   }
   await updateDoc(doc(db,'campagnes',String(S.annee)), {[`exploitations.${S.subExploit}.parcelles`]: parcs});
+  console.log('[DIAG saveParc]','annee=',S.annee,'subExploit=',S.subExploit,'nouvelleSurfaceTotale=',parcs.reduce((a,p)=>a+p.surface,0));
   resetParcForm(); renderParcList(); renderParcSummary(); renderTableau();
 }
 window.resetParcForm=function(){
