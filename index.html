@@ -853,12 +853,11 @@ function renderTableau(){
   const e=S.exploit, d=expl(e), pm=poidsReel(e);
   const totS=d.parcelles.reduce((a,p)=>a+totSorties(e,p),0);
   const totO=d.parcelles.reduce((a,p)=>a+objDynamique(e,p),0);
-  const totKgObj=Math.round(totO*pm.val);
-  console.log('[DIAG renderTableau]','exploit=',e,'annee=',S.annee,'nbParcelles=',d.parcelles.length,'surfaceTotale=',d.parcelles.reduce((a,p)=>a+p.surface,0),'totO(caisses)=',totO,'totKgObj=',totKgObj);
+  const surfTot=d.parcelles.reduce((a,p)=>a+p.surface,0);
+  const totKgObj=Math.round(surfTot*rdtExploit(e)); // calcul direct, cohérent avec Config (pas de dérive d'arrondi par parcelle)
   const totKgRecolte=Math.round(totS*pm.val);
   const restant=Math.max(0,totO-totS);
   const pct=totO>0?Math.round(totS/totO*100):0;
-  const surfTot=d.parcelles.reduce((a,p)=>a+p.surface,0);
   const rdtG=surfTot>0&&totS>0?Math.round(totS*pm.val/surfTot):0;
 
   document.getElementById('topbar-sub').textContent=d.nom+' · '+S.annee;
@@ -1590,11 +1589,12 @@ function renderParcSummary(){
   const surf=d.parcelles.reduce((a,p)=>a+p.surface,0);
   const pm=poidsReel(e);
   const totObj=d.parcelles.reduce((a,p)=>a+Math.round(p.surface*rdtExploit(e)/pm.val),0);
+  const poidsEstime=Math.round(surf*rdtExploit(e)); // calcul direct, cohérent avec Config/Dashboard (pas de dérive d'arrondi par parcelle)
   const rdtMoy=surf>0?rdtExploit(e):0;
   document.getElementById('parc-summary').innerHTML=`
     <div class="sum-stat"><div class="sum-label">Surface totale</div><div class="sum-val">${surf.toFixed(2)} ha</div></div>
     <div class="sum-stat"><div class="sum-label">Objectif total</div><div class="sum-val">${totObj} caisses</div></div>
-    <div class="sum-stat"><div class="sum-label">Poids estimé</div><div class="sum-val">${fmtKg(totObj*pm.val)}</div></div>
+    <div class="sum-stat"><div class="sum-label">Poids estimé</div><div class="sum-val">${fmtKg(poidsEstime)}</div></div>
     <div class="sum-stat"><div class="sum-label">Appellation</div><div class="sum-val">${rdtMoy.toLocaleString()} kg/ha</div></div>`;
   document.getElementById('sub-parc-sub').textContent=d.parcelles.length+' parcelles · '+surf.toFixed(2)+' ha';
 }
@@ -1674,7 +1674,6 @@ window.saveParc=async function(){
     parcs.push({nom,surface,obj,lat,lon,id:genId()}); showToast('"'+nom+'" ajoutée');
   }
   await updateDoc(doc(db,'campagnes',String(S.annee)), {[`exploitations.${S.subExploit}.parcelles`]: parcs});
-  console.log('[DIAG saveParc]','annee=',S.annee,'subExploit=',S.subExploit,'nouvelleSurfaceTotale=',parcs.reduce((a,p)=>a+p.surface,0));
   resetParcForm(); renderParcList(); renderParcSummary(); renderTableau();
 }
 window.resetParcForm=function(){
