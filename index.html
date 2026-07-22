@@ -262,7 +262,7 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
         <div id="histo-comments"></div>
         <div id="histo-meteo-manuel" style="margin-top:10px"></div>
         <div id="histo-meteo" style="margin-top:10px"></div>
-        <button class="btn btn-secondary" style="margin-top:10px" onclick="openCommentaires(S.exploit)"><i class="ti ti-message"></i> Ajouter / modifier un commentaire</button>
+        <button class="btn btn-secondary" style="margin-top:10px" onclick="openCommentaires()"><i class="ti ti-message"></i> Ajouter / modifier un commentaire</button>
       </div>
       <div class="card"><div class="card-title">Export des données</div><div id="export-section"></div></div>
     </div>
@@ -272,7 +272,7 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
       <div class="card" style="margin-top:4px">
         <div class="card-title">Campagne</div>
         <button class="btn btn-success" id="btn-new-camp" onclick="demanderNouvelleCampagne()"><i class="ti ti-plus"></i> Créer une nouvelle campagne</button>
-        <button class="btn btn-danger" id="btn-del-camp" style="margin-top:8px" onclick="confirmSupprimerCampagne(S.annee)"><i class="ti ti-trash"></i> Supprimer la campagne en cours</button>
+        <button class="btn btn-danger" id="btn-del-camp" style="margin-top:8px" onclick="confirmSupprimerCampagne()"><i class="ti ti-trash"></i> Supprimer la campagne en cours</button>
       </div>
       <div class="card">
         <div class="card-title">Simulation objectifs — <span id="cfg-annee-lbl" style="color:var(--accent)"></span></div>
@@ -1440,27 +1440,33 @@ async function nouvelleCampagne(prochaine){
   renderConfig(); renderTableau();
   showToast('✓ Campagne '+prochaine+' créée pour '+expl().nom+' !');
 }
-window.confirmSupprimerCampagne=async function(a){
-  const e=S.exploit;
-  const [rs,bs]=await Promise.all([getDocs(collection(db,'campagnes',String(a),'remorques')),getDocs(collection(db,'campagnes',String(a),'bons'))]);
-  const nbRem=rs.docs.filter(d=>d.data().exploit===e).length;
-  const nbBons=bs.docs.filter(d=>d.data().exploit===e).length;
-  const nbParcelles=(S.campagnes[a]?.exploitations?.[e]?.parcelles||[]).length;
-  const autresExploitsPresents=Object.keys(S.campagnes[a]?.exploitations||{}).filter(x=>x!==e);
+window.confirmSupprimerCampagne=async function(){
+  const a=S.annee;
+  try{
+    const e=S.exploit;
+    const [rs,bs]=await Promise.all([getDocs(collection(db,'campagnes',String(a),'remorques')),getDocs(collection(db,'campagnes',String(a),'bons'))]);
+    const nbRem=rs.docs.filter(d=>d.data().exploit===e).length;
+    const nbBons=bs.docs.filter(d=>d.data().exploit===e).length;
+    const nbParcelles=(S.campagnes[a]?.exploitations?.[e]?.parcelles||[]).length;
+    const autresExploitsPresents=Object.keys(S.campagnes[a]?.exploitations||{}).filter(x=>x!==e);
 
-  const etatDesLieux=nbRem||nbBons
-    ? `Cette campagne contient ${nbRem} remorque(s) et ${nbBons} bon(s) de pesée pour ${esc(expl().nom)}, en plus de ses ${nbParcelles} parcelle(s) et pressoir(s) configurés.`
-    : `Cette campagne est vide (aucune remorque ni bon enregistré) mais contient sa configuration : ${nbParcelles} parcelle(s) et pressoir(s).`;
-  const msgPortee=autresExploitsPresents.length
-    ? `Seules les données de ${esc(expl().nom)} seront supprimées ; ${autresExploitsPresents.map(x=>esc(S.exploitationsGlobales[x]?.nom||x)).join(', ')} ne sont pas affectées.`
-    : `Aucune autre exploitation n'utilise ce document d'année : il sera supprimé entièrement.`;
+    const etatDesLieux=nbRem||nbBons
+      ? `Cette campagne contient ${nbRem} remorque(s) et ${nbBons} bon(s) de pesée pour ${esc(expl().nom)}, en plus de ses ${nbParcelles} parcelle(s) et pressoir(s) configurés.`
+      : `Cette campagne est vide (aucune remorque ni bon enregistré) mais contient sa configuration : ${nbParcelles} parcelle(s) et pressoir(s).`;
+    const msgPortee=autresExploitsPresents.length
+      ? `Seules les données de ${esc(expl().nom)} seront supprimées ; ${autresExploitsPresents.map(x=>esc(S.exploitationsGlobales[x]?.nom||x)).join(', ')} ne sont pas affectées.`
+      : `Aucune autre exploitation n'utilise ce document d'année : il sera supprimé entièrement.`;
 
-  showModal(
-    'Supprimer la campagne '+a+' ?',
-    `${etatDesLieux} ${msgPortee}`,
-    'Continuer','btn-danger',
-    ()=>setTimeout(()=>confirmSupprimerCampagneEtape2(a,nbRem,nbBons),250)
-  );
+    showModal(
+      'Supprimer la campagne '+a+' ?',
+      `${etatDesLieux} ${msgPortee}`,
+      'Continuer','btn-danger',
+      ()=>setTimeout(()=>confirmSupprimerCampagneEtape2(a,nbRem,nbBons),250)
+    );
+  }catch(err){
+    console.error('Erreur confirmSupprimerCampagne:',err);
+    showToast('Erreur : '+err.message);
+  }
 }
 function confirmSupprimerCampagneEtape2(a,nbRem,nbBons){
   showModal(
@@ -1471,9 +1477,10 @@ function confirmSupprimerCampagneEtape2(a,nbRem,nbBons){
   );
 }
 async function supprimerCampagne(a){
+ try{
   const e=S.exploit;
   const c=S.campagnes[a];
-  if(!c) return;
+  if(!c){ showToast('Erreur : campagne '+a+' introuvable en mémoire'); return; }
 
   // On ne retire que les remorques/bons de CETTE exploitation pour cette année
   const [rs,bs]=await Promise.all([getDocs(collection(db,'campagnes',String(a),'remorques')),getDocs(collection(db,'campagnes',String(a),'bons'))]);
@@ -1512,6 +1519,10 @@ async function supprimerCampagne(a){
   buildAnneeSelect(); subscribeRemorques(); subscribeBons(); buildSaisieSelects();
   renderConfig(); renderTableau();
   showToast('Campagne '+a+' supprimée pour '+expl().nom);
+ }catch(err){
+  console.error('Erreur supprimerCampagne:',err);
+  showToast('Erreur suppression : '+err.message);
+ }
 }
 
 // ── PARAMÈTRES PAR EXPLOITATION ───────────────────────────────
@@ -1748,7 +1759,7 @@ async function deleteExploitation(e){
   showToast('"'+nom+'" retirée de la campagne '+S.annee);
 }
 
-window.openCommentaires=function(e){
+window.openCommentaires=function(e=S.exploit){
   S.subExploit=e;
   const d=camp().exploitations[e];
   document.getElementById('sub-comment-title').textContent='Commentaires — '+d.nom;
