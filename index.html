@@ -1434,7 +1434,7 @@ async function nouvelleCampagne(prochaine){
   // Si l'année cible existe déjà (créée par l'autre exploitation), on ajoute juste notre nœud dedans
   let cible=S.campagnes[prochaine];
   if(!cible){
-    cible={rendement:src.rendement,poidsPrev:src.poidsPrev,exploitations:{}};
+    cible={rendement:src.rendement,poidsPrev:src.poidsPrev,active:true,exploitations:{}};
     S.campagnes[prochaine]=cible;
   }
   const nouvelExploit=JSON.parse(JSON.stringify(src.exploitations[e]));
@@ -1449,9 +1449,14 @@ async function nouvelleCampagne(prochaine){
   renderConfig(); renderTableau();
   showToast('✓ Campagne '+prochaine+' créée pour '+expl().nom+' !');
 }
-window.confirmSupprimerCampagne=function(a){
-  if(new Date().getFullYear()-a<=5){ showToast('Suppression réservée aux campagnes de plus de 5 ans'); return; }
+window.confirmSupprimerCampagne=async function(a){
   const e=S.exploit;
+  if(new Date().getFullYear()-a<=5){
+    // Exception : une campagne vide (jamais démarrée, créée par erreur) reste supprimable même récente
+    const [rs,bs]=await Promise.all([getDocs(collection(db,'campagnes',String(a),'remorques')),getDocs(collection(db,'campagnes',String(a),'bons'))]);
+    const aDesDonnees=rs.docs.some(d=>d.data().exploit===e)||bs.docs.some(d=>d.data().exploit===e);
+    if(aDesDonnees){ showToast('Suppression réservée aux campagnes de plus de 5 ans (ou entièrement vides)'); return; }
+  }
   const autresExploitsPresents=Object.keys(S.campagnes[a]?.exploitations||{}).filter(x=>x!==e);
   const msg=autresExploitsPresents.length
     ? `Supprimer la campagne ${a} de ${esc(expl().nom)} uniquement ? Les données de ${autresExploitsPresents.map(x=>esc(S.exploitationsGlobales[x]?.nom||x)).join(', ')} pour cette même année ne sont pas affectées. Action irréversible pour ${esc(expl().nom)}.`
@@ -1509,7 +1514,7 @@ window.openGererParams=function(e){
   const d=camp().exploitations[e];
   document.getElementById('sub-params-title').textContent='Paramètres — '+d.nom;
   document.getElementById('sub-params-sub').textContent='Campagne '+S.annee;
-  const ro=!camp().active;
+  const ro=!d.active;
   document.getElementById('params-readonly-alert').style.display=ro?'block':'none';
   document.getElementById('params-rdt').value=d.rendement||camp().rendement;
   document.getElementById('params-rdt').disabled=ro;
@@ -1538,8 +1543,8 @@ function renderParamsSim(e){
     </div>`;
 }
 window.saveExploitParams=async function(){
-  if(!camp().active) return;
   const e=S.subExploit;
+  if(!camp().exploitations[e].active) return;
   const rdt=parseInt(document.getElementById('params-rdt').value)||9120;
   const poids=parseFloat(document.getElementById('params-poids').value)||41;
   camp().exploitations[e].rendement=rdt;
