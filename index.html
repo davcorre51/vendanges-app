@@ -1459,7 +1459,7 @@ window.confirmSupprimerCampagne=async function(a){
     'Supprimer la campagne '+a+' ?',
     `${etatDesLieux} ${msgPortee}`,
     'Continuer','btn-danger',
-    ()=>confirmSupprimerCampagneEtape2(a,nbRem,nbBons)
+    ()=>setTimeout(()=>confirmSupprimerCampagneEtape2(a,nbRem,nbBons),250)
   );
 }
 function confirmSupprimerCampagneEtape2(a,nbRem,nbBons){
