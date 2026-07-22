@@ -1651,7 +1651,7 @@ async function deleteParc(i){
   camp().exploitations[S.subExploit].parcelles.splice(i,1);
   await updateDoc(doc(db,'campagnes',String(S.annee)), {[`exploitations.${S.subExploit}.parcelles`]: camp().exploitations[S.subExploit].parcelles});
   if(S.editParcIdx===i) resetParcForm();
-  renderParcList(); renderParcSummary(); showToast('"'+nom+'" supprimée');
+  renderParcList(); renderParcSummary(); renderTableau(); showToast('"'+nom+'" supprimée');
 }
 window.saveParc=async function(){
   const nom=document.getElementById('parc-nom').value.trim();
@@ -1673,7 +1673,7 @@ window.saveParc=async function(){
     parcs.push({nom,surface,obj,lat,lon,id:genId()}); showToast('"'+nom+'" ajoutée');
   }
   await updateDoc(doc(db,'campagnes',String(S.annee)), {[`exploitations.${S.subExploit}.parcelles`]: parcs});
-  resetParcForm(); renderParcList(); renderParcSummary();
+  resetParcForm(); renderParcList(); renderParcSummary(); renderTableau();
 }
 window.resetParcForm=function(){
   S.editParcIdx=-1; manualParcObj=false;
