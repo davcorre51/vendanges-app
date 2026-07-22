@@ -1352,13 +1352,14 @@ function renderConfig(){
   // sans distinction entre une tres vieille campagne et la campagne en cours de vendange).
   const btnDel=document.getElementById('btn-del-camp');
   const ageCampagne=new Date().getFullYear()-S.annee;
-  if(ageCampagne>5){
+  const campagneVide=!Object.values(S.remorques).some(r=>r.exploit===S.exploit) && !Object.values(S.bons).some(b=>b.exploit===S.exploit);
+  if(ageCampagne>5 || campagneVide){
     btnDel.disabled=false;
     btnDel.title='';
     btnDel.innerHTML=`<i class="ti ti-trash"></i> Supprimer la campagne ${S.annee}`;
   } else {
     btnDel.disabled=true;
-    btnDel.title=`Seules les campagnes de plus de 5 ans peuvent être supprimées depuis cette page (campagne ${S.annee} : ${ageCampagne} an(s)).`;
+    btnDel.title=`Seules les campagnes de plus de 5 ans (ou entièrement vides) peuvent être supprimées depuis cette page (campagne ${S.annee} : ${ageCampagne} an(s)).`;
     btnDel.innerHTML=`<i class="ti ti-lock"></i> Suppression indisponible (< 5 ans)`;
   }
   document.getElementById('cfg-annee-lbl').textContent=S.annee;
@@ -1439,6 +1440,7 @@ async function nouvelleCampagne(prochaine){
   }
   const nouvelExploit=JSON.parse(JSON.stringify(src.exploitations[e]));
   nouvelExploit.active=true;
+  nouvelExploit.commentaires={}; // les observations de récolte ne concernent que l'année d'origine
   cible.exploitations[e]=nouvelExploit;
   await setDoc(doc(db,'campagnes',String(prochaine)),cible);
 
