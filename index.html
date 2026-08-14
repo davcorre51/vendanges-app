@@ -630,24 +630,29 @@ async function init() {
     document.querySelector('.app').innerHTML = '<div style="padding:40px 20px;text-align:center;color:#991b1b;font-size:14px">Impossible de se connecter à la base de données.<br>Vérifie ta connexion internet et réessaie.</div>';
     return;
   }
-  const snap = await getDocs(collection(db,'campagnes'));
-  if(snap.empty){ await creerCampagneDefaut(2025); }
-  else { snap.forEach(d=>{ S.campagnes[d.id]=d.data(); }); }
-  await migrerParcellesEtRemorques(); // une seule fois par campagne : attribue un ID stable aux parcelles + rattache l'historique
-  await migrerPressoirsEtBons(); // idem pour les pressoirs : ID stable + rattachement des bons existants
-  await migrerExploitationsGlobales(); // registre global des exploitations + statut actif par exploitation
-  const exploitsDisponibles=Object.keys(S.exploitationsGlobales);
-  let dernierChoix=null;
-  try{ dernierChoix=localStorage.getItem('vendanges_exploit'); }catch(err){ /* ignore */ }
-  S.exploit=(dernierChoix&&exploitsDisponibles.includes(dernierChoix))?dernierChoix:exploitsDisponibles[0];
-  S.annee=anneeActiveExploit(S.exploit);
-  S.campagne=S.campagnes[S.annee];
-  S.saisieExploit=S.exploit;
-  S.pressExploit=S.exploit;
-  S.subExploit=S.exploit;
-  buildEtabs();
-  buildAnneeSelect(); buildSaisieSelects(); renderTableau(); renderConfig();
-  subscribeRemorques(); subscribeBons(); subscribeCampagne();
+  try {
+    const snap = await getDocs(collection(db,'campagnes'));
+    if(snap.empty){ await creerCampagneDefaut(2025); }
+    else { snap.forEach(d=>{ S.campagnes[d.id]=d.data(); }); }
+    await migrerParcellesEtRemorques(); // une seule fois par campagne : attribue un ID stable aux parcelles + rattache l'historique
+    await migrerPressoirsEtBons(); // idem pour les pressoirs : ID stable + rattachement des bons existants
+    await migrerExploitationsGlobales(); // registre global des exploitations + statut actif par exploitation
+    const exploitsDisponibles=Object.keys(S.exploitationsGlobales);
+    let dernierChoix=null;
+    try{ dernierChoix=localStorage.getItem('vendanges_exploit'); }catch(err){ /* ignore */ }
+    S.exploit=(dernierChoix&&exploitsDisponibles.includes(dernierChoix))?dernierChoix:exploitsDisponibles[0];
+    S.annee=anneeActiveExploit(S.exploit);
+    S.campagne=S.campagnes[S.annee];
+    S.saisieExploit=S.exploit;
+    S.pressExploit=S.exploit;
+    S.subExploit=S.exploit;
+    buildEtabs();
+    buildAnneeSelect(); buildSaisieSelects(); renderTableau(); renderConfig();
+    subscribeRemorques(); subscribeBons(); subscribeCampagne();
+  } catch(e) {
+    console.error('Erreur init():',e);
+    document.querySelector('.app').innerHTML = '<div style="padding:40px 20px;text-align:center;color:#991b1b;font-size:14px">Erreur au chargement : '+e.message+'<br><br>Regarde la console (F12) pour le détail complet.</div>';
+  }
 }
 
 async function creerCampagneDefaut(annee){
