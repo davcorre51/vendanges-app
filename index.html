@@ -203,7 +203,7 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
         </div>
         <div class="card-title">Détail par parcelle</div>
         <div style="overflow-x:auto">
-          <table class="tbl"><thead><tr><th>Parcelle</th><th>Sorties</th><th>Obj.</th><th>Écart</th><th>kg/ha</th><th>Statut</th></tr></thead>
+          <table class="tbl"><thead><tr><th>Parcelle</th><th>Sorties</th><th>Obj.</th><th>Écart</th><th>Récolté (kg)</th><th>kg/ha</th></tr></thead>
           <tbody id="parc-tbody"></tbody></table>
         </div>
       </div>
@@ -881,14 +881,14 @@ function renderTableau(){
 
   let rows=d.parcelles.map(p=>{
     const s=totSorties(e,p), obj=objDynamique(e,p);
-    const ec=s-obj, pct2=obj>0?Math.round(s/obj*100):0;
+    const ec=s-obj;
+    const poidsRecolte=s>0?Math.round(s*pm.val):0;
     const rha=s>0?Math.round(s*pm.val/p.surface):0;
     const ecH=ec>0?`<span class="dp">+${ec}</span>`:ec<0?`<span class="dn">${ec}</span>`:'—';
-    const badge=pct2>=100?'<span class="badge done">Terminé</span>':pct2>0?`<span class="badge prog">${pct2}%</span>`:'<span class="badge todo">À faire</span>';
-    return `<tr><td title="${esc(p.nom)}">${esc(p.nom)}</td><td>${s}</td><td>${obj}</td><td>${ecH}</td><td>${s>0?rha.toLocaleString():'—'}</td><td>${badge}</td></tr>`;
+    return `<tr><td title="${esc(p.nom)}">${esc(p.nom)}</td><td>${s}</td><td>${obj}</td><td>${ecH}</td><td>${s>0?poidsRecolte.toLocaleString():'—'}</td><td>${s>0?rha.toLocaleString():'—'}</td></tr>`;
   }).join('');
   const totEc=totS-totO;
-  rows+=`<tr class="total-row"><td>Total</td><td>${totS}</td><td>${totO}</td><td>${totEc>0?`<span class="dp">+${totEc}</span>`:totEc<0?`<span class="dn">${totEc}</span>`:'—'}</td><td>${rdtG>0?rdtG.toLocaleString():'—'}</td><td></td></tr>`;
+  rows+=`<tr class="total-row"><td>Total</td><td>${totS}</td><td>${totO}</td><td>${totEc>0?`<span class="dp">+${totEc}</span>`:totEc<0?`<span class="dn">${totEc}</span>`:'—'}</td><td>${totKgRecolte>0?totKgRecolte.toLocaleString():'—'}</td><td>${rdtG>0?rdtG.toLocaleString():'—'}</td></tr>`;
   document.getElementById('parc-tbody').innerHTML=rows;
 }
 
