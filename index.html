@@ -870,11 +870,12 @@ function renderTableau(){
     ?`<div class="poids-badge reel"><i class="ti ti-weight" style="font-size:12px"></i> Poids réel : ${pm.val.toFixed(2)} kg/caisse</div>`
     :`<div class="poids-badge prev"><i class="ti ti-clock" style="font-size:12px"></i> Prévisionnel : ${pm.val} kg/caisse</div>`;
 
+  const restantKg=Math.max(0,totKgObj-totKgRecolte);
   document.getElementById('stats-row').innerHTML=`
+    <div class="stat"><div class="stat-label">Récolté</div><div class="stat-val green">${totKgRecolte.toLocaleString()}</div><div class="stat-sub">kg</div></div>
+    <div class="stat"><div class="stat-label">Restant</div><div class="stat-val amber">${restantKg.toLocaleString()}</div><div class="stat-sub">kg</div></div>
     <div class="stat"><div class="stat-label">Caisses sorties</div><div class="stat-val">${totS}</div><div class="stat-sub">obj. ${totO} caisses</div></div>
-    <div class="stat"><div class="stat-label">Restant</div><div class="stat-val amber">${restant}</div><div class="stat-sub">caisses</div></div>
-    <div class="stat"><div class="stat-label">Objectif quantité</div><div class="stat-val blue">${totKgObj.toLocaleString()}</div><div class="stat-sub">kg</div></div>
-    <div class="stat"><div class="stat-label">Récolté</div><div class="stat-val green">${totKgRecolte.toLocaleString()}</div><div class="stat-sub">kg</div></div>`;
+    <div class="stat"><div class="stat-label">Restant</div><div class="stat-val amber">${restant}</div><div class="stat-sub">caisses</div></div>`;
 
   document.getElementById('prog-pct-lbl').textContent=pct+'%';
   document.getElementById('prog-fill').style.width=Math.min(pct,100)+'%';
