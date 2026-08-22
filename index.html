@@ -317,6 +317,8 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
       <div class="form-group"><label class="form-label">Nom</label><input type="text" id="parc-nom" placeholder="ex : Les Grandes Vignes"></div>
       <div class="form-group"><label class="form-label">Surface (ha)</label><input type="number" id="parc-surface" placeholder="ex : 0.45" step="0.01" min="0.01" oninput="calcParcObj()"></div>
       <div class="form-group"><label class="form-label">Objectif caisses</label><input type="number" id="parc-obj" placeholder="calculé automatiquement" oninput="manualParcObj=true"><div class="hint" id="parc-calc-hint"></div></div>
+      <div class="form-group"><label class="form-label" style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="parc-metayage" onchange="toggleParcMetayage()" style="width:auto"> Parcelle en métayage</label></div>
+      <div class="form-group" id="parc-riprop-group" style="display:none"><label class="form-label">RI propriétaire (kg/ha)</label><input type="number" id="parc-riprop" placeholder="ex : 8500" step="1" oninput="calcParcObj()"></div>
       <div class="form-group" style="display:flex;gap:8px">
         <div style="flex:1"><label class="form-label">Latitude <span style="color:var(--text3);font-weight:400">(optionnel)</span></label><input type="number" id="parc-lat" placeholder="ex : 48.9123" step="0.000001"></div>
         <div style="flex:1"><label class="form-label">Longitude <span style="color:var(--text3);font-weight:400">(optionnel)</span></label><input type="number" id="parc-lon" placeholder="ex : 3.6789" step="0.000001"></div>
@@ -364,6 +366,16 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
         <label class="form-label">Poids moyen caisse prévisionnel (kg)</label>
         <input type="number" id="params-poids" oninput="saveExploitParams()">
         <div class="hint" id="params-poids-hint"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">RI de référence (kg/ha)</label>
+        <input type="number" id="params-riref" oninput="saveExploitParams()">
+        <div class="hint">Plafond de la réserve individuelle AOC Champagne (10 000 kg/ha par défaut, peut évoluer)</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">RI exploitant (kg/ha)</label>
+        <input type="number" id="params-riexploitant" oninput="saveExploitParams()">
+        <div class="hint" id="params-ri-hint">Niveau actuel de ta réserve individuelle. L'écart avec la référence s'ajoute à l'appellation.</div>
       </div>
     </div>
     <div class="card">
@@ -726,10 +738,27 @@ function poidsReel(e){
 // Rendement de l'exploitation (propre ou global fallback)
 function rdtExploit(e){ return expl(e)?.rendement||camp().rendement||9120; }
 
-// Objectif dynamique parcelle
+// Écart de réserve individuelle (RI) reconstituable : référence - RI actuelle (jamais négatif)
+function ecartRI(reference,actuelle){ return Math.max(0,(reference||10000)-(actuelle||0)); }
+
+// Écart RI au niveau de l'exploitant (s'applique à toutes les parcelles de l'exploitation)
+function ecartRIExploitant(e){
+  const d=expl(e); if(!d) return 0;
+  return ecartRI(d.riRef, d.riExploitant);
+}
+
+// Rendement effectif d'une parcelle donnée = appellation + écart RI exploitant + écart RI propriétaire (si métayage)
+function rdtEffectif(e,p){
+  const d=expl(e);
+  let r=rdtExploit(e)+ecartRIExploitant(e);
+  if(p?.metayage) r+=ecartRI(d.riRef,p.riProprietaire);
+  return r;
+}
+
+// Objectif dynamique parcelle (tient compte de la réserve individuelle)
 function objDynamique(e,p){
   const pm=poidsReel(e);
-  return Math.round(p.surface*rdtExploit(e)/pm.val);
+  return Math.round(p.surface*rdtEffectif(e,p)/pm.val);
 }
 
 function totSorties(e,p){
@@ -859,7 +888,7 @@ function renderTableau(){
   const totS=d.parcelles.reduce((a,p)=>a+totSorties(e,p),0);
   const totO=d.parcelles.reduce((a,p)=>a+objDynamique(e,p),0);
   const surfTot=d.parcelles.reduce((a,p)=>a+p.surface,0);
-  const totKgObj=Math.round(surfTot*rdtExploit(e)); // calcul direct, cohérent avec Config (pas de dérive d'arrondi par parcelle)
+  const totKgObj=Math.round(d.parcelles.reduce((a,p)=>a+p.surface*rdtEffectif(e,p),0)); // somme par parcelle : le rendement effectif varie selon le métayage
   const totKgRecolte=Math.round(totS*pm.val);
   const restant=Math.max(0,totO-totS);
   const pct=totO>0?Math.round(totS/totO*100):0;
@@ -1230,8 +1259,13 @@ async function renderHistoContent(a){
   const prevPoids=d.poidsPrev||c.poidsPrev||41;
   const pm=totC>0?totP/totC:prevPoids;
   const rdt=d.rendement||c.rendement||9120;
+  const ecartExploitantHist=Math.max(0,(d.riRef||10000)-(d.riExploitant||0));
   const totS=d.parcelles.reduce((s,p)=>s+rems.filter(r=>r.exploit===e&&matchParc(r,p)).reduce((a,r)=>a+r.caisses,0),0);
-  const totO=d.parcelles.reduce((s,p)=>s+Math.round(p.surface*rdt/pm),0);
+  const totO=d.parcelles.reduce((s,p)=>{
+    let rdtP=rdt+ecartExploitantHist;
+    if(p.metayage) rdtP+=Math.max(0,(d.riRef||10000)-(p.riProprietaire||0));
+    return s+Math.round(p.surface*rdtP/pm);
+  },0);
   const surf=d.parcelles.reduce((s,p)=>s+p.surface,0);
   const rdtHa=surf>0&&totS>0?Math.round(totS*pm/surf):0;
 
@@ -1309,7 +1343,7 @@ window.exportRecap=function(){
   let csv='Parcelle;Surface (ha);Objectif;Sorties;Écart;Rdt obj. (kg/ha);Rdt réel (kg/ha)\n';
   d.parcelles.forEach(p=>{
     const s=totSorties(e,p),obj=objDynamique(e,p),ec=s-obj;
-    csv+=`${p.nom};${p.surface};${obj};${s};${ec};${Math.round(rdtExploit(e))};${s>0?Math.round(s*pm.val/p.surface):0}\n`;
+    csv+=`${p.nom};${p.surface};${obj};${s};${ec};${Math.round(rdtEffectif(e,p))};${s>0?Math.round(s*pm.val/p.surface):0}\n`;
   });
   dlCSV(csv,`recap_${e}_${S.annee}.csv`);
 }
@@ -1330,10 +1364,10 @@ window.exportComplet=function(){
   });
 
   // ── Onglet Récap parcelles (exploitation affichée) ──
-  const shRecap=[['Parcelle','Surface (ha)','Objectif','Sorties','Écart','Rdt obj. (kg/ha)','Rdt réel (kg/ha)']];
+  const shRecap=[['Parcelle','Métayage','Surface (ha)','Objectif','Sorties','Écart','Rdt obj. (kg/ha)','Rdt réel (kg/ha)']];
   d.parcelles.forEach(p=>{
     const s=totSorties(e,p), obj=objDynamique(e,p), ec=s-obj;
-    shRecap.push([p.nom, p.surface, obj, s, ec, Math.round(rdtExploit(e)), s>0?Math.round(s*pm.val/p.surface):0]);
+    shRecap.push([p.nom, p.metayage?'Oui':'Non', p.surface, obj, s, ec, Math.round(rdtEffectif(e,p)), s>0?Math.round(s*pm.val/p.surface):0]);
   });
 
   const wb=XLSX.utils.book_new();
@@ -1545,6 +1579,14 @@ window.openGererParams=function(e){
   document.getElementById('params-rdt').disabled=ro;
   document.getElementById('params-poids').value=d.poidsPrev||camp().poidsPrev;
   document.getElementById('params-poids').disabled=ro;
+  document.getElementById('params-riref').value=d.riRef!=null?d.riRef:10000;
+  document.getElementById('params-riref').disabled=ro;
+  document.getElementById('params-riexploitant').value=d.riExploitant!=null?d.riExploitant:'';
+  document.getElementById('params-riexploitant').disabled=ro;
+  const ecart=ecartRIExploitant(e);
+  document.getElementById('params-ri-hint').textContent=ecart>0
+    ? `Écart reconstituable : +${ecart.toLocaleString()} kg/ha, ajoutés à l'appellation.`
+    : `Niveau actuel de ta réserve individuelle. L'écart avec la référence s'ajoute à l'appellation.`;
   const pm=poidsReel(e);
   document.getElementById('params-poids-hint').textContent=pm.reel?'Poids réel disponible — prévisionnel non utilisé.':'Utilisé tant qu\'aucun bon de pesée n\'est enregistré.';
   renderParamsSim(e);
@@ -1555,12 +1597,14 @@ function renderParamsSim(e){
   const pm=poidsReel(e);
   const rdt=d.rendement||camp().rendement;
   const surf=d.parcelles.reduce((a,p)=>a+p.surface,0);
-  const kgObj=Math.round(surf*rdt);
+  const ecartExploitant=ecartRIExploitant(e);
+  const kgObj=Math.round(d.parcelles.reduce((a,p)=>a+p.surface*rdtEffectif(e,p),0)); // somme par parcelle : le rendement effectif varie selon le métayage
   const caisses=Math.round(kgObj/pm.val);
   document.getElementById('params-sim').innerHTML=`
     <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:12px;border:1px solid var(--border)">
       <div class="tot-row"><span class="lbl">Surface totale</span><span>${surf.toFixed(2)} ha</span></div>
       <div class="tot-row"><span class="lbl">Appellation</span><span>${rdt.toLocaleString()} kg/ha</span></div>
+      ${ecartExploitant>0?`<div class="tot-row"><span class="lbl">+ Réserve individuelle</span><span>+${ecartExploitant.toLocaleString()} kg/ha</span></div>`:''}
       <div class="tot-row"><span class="lbl">Poids caisse</span><span>${pm.val.toFixed(pm.reel?2:0)} kg <span style="font-size:10px;color:${pm.reel?'var(--accent)':'var(--amber)'}">${pm.reel?'(réel)':'(prév.)'}</span></span></div>
       <div class="divider"></div>
       <div class="tot-row bold"><span class="lbl">Objectif quantité</span><span>${fmtKg(kgObj)}</span></div>
@@ -1572,12 +1616,23 @@ window.saveExploitParams=async function(){
   if(!camp().exploitations[e].active) return;
   const rdt=parseInt(document.getElementById('params-rdt').value)||9120;
   const poids=parseFloat(document.getElementById('params-poids').value)||41;
+  const riRef=parseFloat(document.getElementById('params-riref').value)||10000;
+  const riExploitantRaw=document.getElementById('params-riexploitant').value;
+  const riExploitant=riExploitantRaw!==''?parseFloat(riExploitantRaw):0;
   camp().exploitations[e].rendement=rdt;
   camp().exploitations[e].poidsPrev=poids;
+  camp().exploitations[e].riRef=riRef;
+  camp().exploitations[e].riExploitant=riExploitant;
   await updateDoc(doc(db,'campagnes',String(S.annee)), {
     [`exploitations.${e}.rendement`]: rdt,
-    [`exploitations.${e}.poidsPrev`]: poids
+    [`exploitations.${e}.poidsPrev`]: poids,
+    [`exploitations.${e}.riRef`]: riRef,
+    [`exploitations.${e}.riExploitant`]: riExploitant
   });
+  const ecart=ecartRIExploitant(e);
+  document.getElementById('params-ri-hint').textContent=ecart>0
+    ? `Écart reconstituable : +${ecart.toLocaleString()} kg/ha, ajoutés à l'appellation.`
+    : `Niveau actuel de ta réserve individuelle. L'écart avec la référence s'ajoute à l'appellation.`;
   renderParamsSim(e);
   renderTableau();
 }
@@ -1594,8 +1649,8 @@ function renderParcSummary(){
   const e=S.subExploit, d=camp().exploitations[e];
   const surf=d.parcelles.reduce((a,p)=>a+p.surface,0);
   const pm=poidsReel(e);
-  const totObj=d.parcelles.reduce((a,p)=>a+Math.round(p.surface*rdtExploit(e)/pm.val),0);
-  const poidsEstime=Math.round(surf*rdtExploit(e)); // calcul direct, cohérent avec Config/Dashboard (pas de dérive d'arrondi par parcelle)
+  const totObj=d.parcelles.reduce((a,p)=>a+objDynamique(e,p),0);
+  const poidsEstime=Math.round(d.parcelles.reduce((a,p)=>a+p.surface*rdtEffectif(e,p),0)); // somme par parcelle : le rendement effectif varie selon le métayage
   const rdtMoy=surf>0?rdtExploit(e):0;
   document.getElementById('parc-summary').innerHTML=`
     <div class="sum-stat"><div class="sum-label">Surface totale</div><div class="sum-val">${surf.toFixed(2)} ha</div></div>
@@ -1610,15 +1665,19 @@ function renderParcList(){
   document.getElementById('parc-list').innerHTML=!d.parcelles.length
     ?'<div style="padding:12px;text-align:center;font-size:13px;color:var(--text3)">Aucune parcelle.</div>'
     :d.parcelles.map((p,i)=>{
-      const obj=Math.round(p.surface*rdtExploit(e)/pm.val);
-      const rdt=Math.round(p.surface*rdtExploit(e)/p.surface);
+      const obj=objDynamique(e,p);
+      const badgeMetayage=p.metayage?' · <span style="color:var(--accent2,#b45309)">métayage</span>':'';
       return `<div class="parc-row">
         <div class="parc-info"><div class="parc-nom">${esc(p.nom)}</div>
-        <div class="parc-detail">${p.surface.toFixed(2)} ha · obj. ${obj} caisses · ${fmtKg(obj*pm.val)}</div></div>
+        <div class="parc-detail">${p.surface.toFixed(2)} ha · obj. ${obj} caisses · ${fmtKg(obj*pm.val)}${badgeMetayage}</div></div>
         <button class="icon-btn" onclick="editParc(${i})"><i class="ti ti-edit" style="font-size:15px"></i></button>
         <button class="icon-btn danger" onclick="confirmDeleteParc(${i})"><i class="ti ti-trash" style="font-size:15px"></i></button>
       </div>`;
     }).join('');
+}
+window.toggleParcMetayage=function(){
+  document.getElementById('parc-riprop-group').style.display=document.getElementById('parc-metayage').checked?'':'none';
+  calcParcObj();
 }
 window.calcParcObj=function(){
   if(manualParcObj) return;
@@ -1626,9 +1685,11 @@ window.calcParcObj=function(){
   const surf=parseFloat(document.getElementById('parc-surface').value);
   if(!surf||surf<=0){document.getElementById('parc-calc-hint').textContent='';document.getElementById('parc-obj').value='';return;}
   const pm=poidsReel(e);
-  const c=Math.round(surf*rdtExploit(e)/pm.val);
+  const pPreview={surface:surf,metayage:document.getElementById('parc-metayage').checked,riProprietaire:parseFloat(document.getElementById('parc-riprop').value)||0};
+  const rdt=rdtEffectif(e,pPreview);
+  const c=Math.round(surf*rdt/pm.val);
   document.getElementById('parc-obj').value=c;
-  document.getElementById('parc-calc-hint').textContent=`→ ${fmtKg(surf*rdtExploit(e))} ÷ ${pm.val.toFixed(1)} kg/caisse = ${c} caisses`;
+  document.getElementById('parc-calc-hint').textContent=`→ ${fmtKg(surf*rdt)} ÷ ${pm.val.toFixed(1)} kg/caisse = ${c} caisses`;
 }
 window.editParc=function(i){
   S.editParcIdx=i; manualParcObj=false;
@@ -1636,9 +1697,12 @@ window.editParc=function(i){
   const pm=poidsReel(e);
   document.getElementById('parc-nom').value=p.nom;
   document.getElementById('parc-surface').value=p.surface;
-  document.getElementById('parc-obj').value=Math.round(p.surface*rdtExploit(e)/pm.val);
+  document.getElementById('parc-obj').value=objDynamique(e,p);
   document.getElementById('parc-lat').value=p.lat!=null?p.lat:'';
   document.getElementById('parc-lon').value=p.lon!=null?p.lon:'';
+  document.getElementById('parc-metayage').checked=!!p.metayage;
+  document.getElementById('parc-riprop').value=p.riProprietaire!=null?p.riProprietaire:'';
+  document.getElementById('parc-riprop-group').style.display=p.metayage?'':'none';
   document.getElementById('parc-calc-hint').textContent=`Surface actuelle : ${p.surface} ha`;
   document.getElementById('parc-form-title').textContent='Modifier — '+p.nom;
   document.getElementById('btn-parc-save').innerHTML='<i class="ti ti-check"></i> Enregistrer les modifications';
@@ -1666,25 +1730,29 @@ window.saveParc=async function(){
   const obj=parseInt(document.getElementById('parc-obj').value);
   const latRaw=document.getElementById('parc-lat').value, lonRaw=document.getElementById('parc-lon').value;
   const lat=latRaw!==''?parseFloat(latRaw):null, lon=lonRaw!==''?parseFloat(lonRaw):null;
+  const metayage=document.getElementById('parc-metayage').checked;
+  const riProprietaire=metayage?(parseFloat(document.getElementById('parc-riprop').value)||0):null;
   if(!nom){showToast('Saisis un nom de parcelle');return;}
   if(!surface||surface<=0){showToast('Surface invalide');return;}
   if(!obj||obj<=0){showToast('Objectif invalide');return;}
   const parcs=camp().exploitations[S.subExploit].parcelles;
   if(S.editParcIdx>=0){
     const idExistant=parcs[S.editParcIdx].id||genId(); // garde l'ID si présent, en crée un si jamais absent (ancienne parcelle)
-    parcs[S.editParcIdx]={nom,surface,obj,lat,lon,id:idExistant};
+    parcs[S.editParcIdx]={nom,surface,obj,lat,lon,metayage,riProprietaire,id:idExistant};
     showToast('"'+nom+'" modifiée');
   }
   else{
     if(parcs.find(p=>p.nom.toLowerCase()===nom.toLowerCase())){showToast('Ce nom existe déjà');return;}
-    parcs.push({nom,surface,obj,lat,lon,id:genId()}); showToast('"'+nom+'" ajoutée');
+    parcs.push({nom,surface,obj,lat,lon,metayage,riProprietaire,id:genId()}); showToast('"'+nom+'" ajoutée');
   }
   await updateDoc(doc(db,'campagnes',String(S.annee)), {[`exploitations.${S.subExploit}.parcelles`]: parcs});
   resetParcForm(); renderParcList(); renderParcSummary(); renderTableau();
 }
 window.resetParcForm=function(){
   S.editParcIdx=-1; manualParcObj=false;
-  ['parc-nom','parc-surface','parc-obj','parc-lat','parc-lon'].forEach(id=>document.getElementById(id).value='');
+  ['parc-nom','parc-surface','parc-obj','parc-lat','parc-lon','parc-riprop'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('parc-metayage').checked=false;
+  document.getElementById('parc-riprop-group').style.display='none';
   document.getElementById('parc-calc-hint').textContent='';
   document.getElementById('parc-form-title').textContent='Ajouter une parcelle';
   document.getElementById('btn-parc-save').innerHTML='<i class="ti ti-check"></i> Enregistrer';
@@ -2026,6 +2094,23 @@ window.genererPDF=async function(exploitKey){
     didParseCell:(d)=>{ if(d.row.index===rowsParc.length-1){d.cell.styles.fontStyle='bold';d.cell.styles.fillColor=[234,243,232];} }
   });
   y=pdf.lastAutoTable.finalY+6;
+
+  // ── Info réserve individuelle (si active) ─────────────────
+  const ecartExploitantPdf=ecartRIExploitant(e);
+  const parcellesMetayage=d.parcelles.filter(p=>p.metayage);
+  if(ecartExploitantPdf>0||parcellesMetayage.length>0){
+    const infosRI=[];
+    if(ecartExploitantPdf>0) infosRI.push(`RI exploitant : +${fmtN(ecartExploitantPdf)} kg/ha reconstitués`);
+    parcellesMetayage.forEach(p=>{
+      const ecP=Math.max(0,(d.riRef||10000)-(p.riProprietaire||0));
+      if(ecP>0) infosRI.push(`${p.nom} (métayage) : +${fmtN(ecP)} kg/ha propriétaire`);
+    });
+    if(infosRI.length){
+      pdf.setTextColor(...grey); pdf.setFontSize(8); pdf.setFont('helvetica','italic');
+      pdf.text('Réserve individuelle — '+infosRI.join(' · '), mL, y);
+      y+=6;
+    }
+  }
 
   // ── Tableau bilan par pressoir ────────────────────────────
   const pressoirsListe=d.pressoirs||[];
